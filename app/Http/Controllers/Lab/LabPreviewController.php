@@ -10,8 +10,6 @@ use App\Support\Seo\PageSeo;
 use Illuminate\Http\BinaryFileResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\File;
-use InvalidArgumentException;
 
 /**
  * Private full-page preview for a Lab project. Public hosting is Lab → Publish.
@@ -61,15 +59,27 @@ class LabPreviewController extends Controller
             return response()->file($absolute);
         }
 
+        $previousDirectory = getcwd();
         chdir($root);
-        ob_start();
         try {
-            include $absolute;
-            $body = ob_get_clean();
+            $render = static function (string $file): string {
+                ob_start();
+                try {
+                    include $file;
+                    return (string) ob_get_clean();
+                } catch (\Throwable $e) {
+                    ob_end_clean();
+                    throw $e;
+                }
+            };
+            $body = $render($absolute);
         } catch (\Throwable $e) {
-            ob_end_clean();
             report($e);
             return response('PHP preview failed.', 500)->header('Content-Type', 'text/plain; charset=utf-8');
+        } finally {
+            if ($previousDirectory !== false) {
+                chdir($previousDirectory);
+            }
         }
 
         return response($body)->header('Content-Type', 'text/html; charset=utf-8');

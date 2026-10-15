@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 750" role="img" aria-labelledby="title desc">
+  <title id="title">Premium store preview</title><desc id="desc">A warm ecommerce storefront with a product grid.</desc>
+  <rect width="1200" height="750" rx="28" fill="#f4eee8"/><rect x="28" y="28" width="1144" height="694" rx="20" fill="#fffaf5"/>
+  <rect x="72" y="72" width="130" height="22" rx="8" fill="#2c2521"/><rect x="790" y="74" width="74" height="12" rx="6" fill="#8f8279"/><rect x="892" y="74" width="74" height="12" rx="6" fill="#8f8279"/><rect x="994" y="68" width="120" height="32" rx="16" fill="#eee0d2"/>
+  <rect x="72" y="146" width="1056" height="150" rx="14" fill="#ead7c4"/><rect x="112" y="188" width="360" height="18" rx="9" fill="#47382e"/><rect x="112" y="222" width="250" height="11" rx="5" fill="#8c7767"/><rect x="930" y="184" width="132" height="46" rx="23" fill="#c86f40"/>
+  <rect x="72" y="336" width="246" height="284" rx="14" fill="#eadfd5"/><rect x="342" y="336" width="246" height="284" rx="14" fill="#ded6cf"/><rect x="612" y="336" width="246" height="284" rx="14" fill="#eee5dc"/><rect x="882" y="336" width="246" height="284" rx="14" fill="#e3d6c9"/>
+  <g fill="#47382e"><rect x="72" y="640" width="120" height="12" rx="6"/><rect x="342" y="640" width="150" height="12" rx="6"/><rect x="612" y="640" width="130" height="12" rx="6"/><rect x="882" y="640" width="140" height="12" rx="6"/></g>
+  <g fill="#8d7767"><rect x="72" y="665" width="76" height="10" rx="5"/><rect x="342" y="665" width="92" height="10" rx="5"/><rect x="612" y="665" width="80" height="10" rx="5"/><rect x="882" y="665" width="88" height="10" rx="5"/></g>
+</svg>

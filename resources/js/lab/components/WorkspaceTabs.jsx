@@ -14,6 +14,7 @@ const PLUS_MENU = [
     { id: 'find-file', label: 'Find file', shortcut: `${MOD}P`, icon: 'search', group: 'file' },
     { id: 'recently-opened', label: 'Recently opened', shortcut: `${MOD}E`, icon: 'history', group: 'file' },
     { id: 'supabase', label: 'Supabase', shortcut: '', icon: 'datastore', group: 'connect' },
+    { id: 'forms', label: 'Forms', shortcut: '', icon: 'new-file', group: 'connect' },
     { id: 'app-settings', label: 'App settings', shortcut: `${MOD},`, icon: 'settings', group: 'prefs' },
 ]
 
@@ -424,6 +425,9 @@ export function WorkspaceTabs({
         setMenuOpen(false)
 
         switch (itemId) {
+            case 'forms':
+                openTab('Forms', 'teal', 'forms')
+                break
             case 'files':
                 openTab('Files', 'sky', 'files')
                 break

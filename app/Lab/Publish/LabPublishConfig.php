@@ -108,7 +108,9 @@ final class LabPublishConfig
 
     public function subdomainUrl(string $slug): string
     {
-        return $this->scheme().'://'.$slug.'.'.$this->parentDomain();
+        $port = app()->environment('local') && $this->appHost() === 'localhost'
+            ? parse_url((string) config('app.url'), PHP_URL_PORT) : null;
+        return $this->scheme().'://'.$slug.'.'.$this->parentDomain().($port ? ':'.$port : '');
     }
 
     public function customUrl(string $host): string

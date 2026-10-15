@@ -20,7 +20,7 @@ export { guestWriteNeedsReload, guestWriteRestartsDev, looksLikeVitePageReload, 
 const SW_URL = '/__krikkit_lab_sw__.js?v=host-vite-5173-29'
 const SW_MIGRATION_KEY = 'krikkit-lab-sw-migration-v1'
 // Bump when public/__worker__.js polyfills change (avoids sticky Worker caches).
-const WORKER_URL = '/__worker__.js?v=histfile-dev-null-1'
+const WORKER_URL = '/__worker__.js?v=preserve-browser-await-20261016'
 const LEGACY_IDB_RESET_KEY = 'krikkit-deepthought-legacy-cache-v1'
 
 /** @type {import('../runtime/dist/index').LabRuntime|null} */

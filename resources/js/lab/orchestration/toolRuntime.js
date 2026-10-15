@@ -9,6 +9,7 @@ import {
     searchWorkspaceFiles,
 } from '../lib/chatTools.js'
 import { lookupLabVisuals } from '../lib/visuals.js'
+import { readForm, proposeFormChange } from '../lib/forms.js'
 import {
     awaitLabDatastoreReady,
     reviseLabDatastore,
@@ -200,6 +201,22 @@ export async function applyToolCalls(args = {}) {
         let observation
 
         switch (name) {
+            case 'read_form':
+            case 'propose_form_change': {
+                try {
+                    if (! projectUuid) throw new Error('Open a project first.')
+                    const result = name === 'read_form'
+                        ? await readForm(projectUuid, input.form_uuid)
+                        : await proposeFormChange(projectUuid, input.form_uuid, input.expected_version, input.operations)
+                    if (name === 'propose_form_change' && typeof window !== 'undefined') {
+                        window.dispatchEvent(new CustomEvent('krikkit-form-proposal', { detail: { ...result, projectUuid } }))
+                    }
+                    observation = observationOk(name, name === 'read_form' ? 'Read form definition.' : 'Proposal shown to owner. NOT saved or activated. Stop and wait for the owner to Apply.', result, name === 'propose_form_change' ? 'form_proposal_pending' : null)
+                } catch (error) {
+                    observation = observationError(name, error.message, { hint: 'form_operation_failed' })
+                }
+                break
+            }
             case 'list_dir': {
                 const path = input.path || 'src'
                 const listed = listWorkspaceDir({

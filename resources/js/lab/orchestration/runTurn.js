@@ -320,6 +320,7 @@ export async function runOrchestratedTurn(options = {}) {
         let healStubPaths = []
         // Prefer provider-native tool_calls; recover text/JSON/diff pseudo-tools as a safety net.
         let currentToolCalls = Array.isArray(toolCalls) ? toolCalls : []
+        let formWorkflow = false
         if (! currentToolCalls.length && assistantText) {
             const recovered = recoverPseudoToolCalls(assistantText, [], {
                 vfsContents: canonicalContents,
@@ -518,7 +519,7 @@ export async function runOrchestratedTurn(options = {}) {
             }
 
             // Cap read/explore tools at MAX_EXPLORE_TOOLS_PER_TURN for mutation turns.
-            if (intent.mutation) {
+            if (intent.mutation && ! formWorkflow && ! currentToolCalls.some(call => ['read_form', 'propose_form_change'].includes(call?.name))) {
                 const beforeCap = currentToolCalls
                 currentToolCalls = truncateExploreToolBatch(
                     currentToolCalls,
@@ -583,6 +584,8 @@ export async function runOrchestratedTurn(options = {}) {
                 }
             }
 
+            formWorkflow ||= currentToolCalls.some(call => ['read_form', 'propose_form_change'].includes(call?.name))
+            if (formWorkflow) currentToolCalls = currentToolCalls.filter(call => ['read_form', 'propose_form_change'].includes(call?.name))
             const exploresThisBatch = countExploreTools(currentToolCalls)
             const pass = await runExecutorPass({
                 machine,
@@ -611,6 +614,23 @@ export async function runOrchestratedTurn(options = {}) {
             agentRound += 1
             const pendingCount = Object.keys(workingVfs.pendingWrites()).length
             const exploreBudgetExhausted = exploreToolsUsed >= MAX_EXPLORE_TOOLS_PER_TURN
+
+            // Definition proposals are a separate workflow, never a file-build mutation.
+            if (formWorkflow) {
+                const proposed = pass.observations.some(obs => obs.hint === 'form_proposal_pending')
+                const failed = pass.observations.some(obs => obs.status === 'error')
+                if (! proposed && ! failed && canContinueAgent()) {
+                    const next = await continueAgent({ observations: pass.observations, toolCalls: currentToolCalls, round: agentRound, formWorkflow: true })
+                    agentContinuations++
+                    currentToolCalls = takeToolCalls(next).filter(call => ['read_form', 'propose_form_change'].includes(call?.name))
+                    if (currentToolCalls.length) continue
+                }
+                machine.transition(TURN_STATES.ROLLING_BACK)
+                workingVfs.discard()
+                machine.transition(TURN_STATES.PRESENTING, { formWorkflow: true })
+                machine.transition(TURN_STATES.IDLE)
+                return presentResult({ ok: proposed, lane: LANES.BUILD, intent, warnings, callouts, contextPack, formWorkflow: true, proposalPending: proposed, committed: false })
+            }
 
             if (pass?.diffLoopEscalate) {
                 forceFullWrite = true

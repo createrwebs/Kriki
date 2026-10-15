@@ -1,0 +1,10 @@
+{
+  "template": "table_booking",
+  "fields": [
+    { "id": "customer_name", "label": "ชื่อผู้จอง", "type": "text", "required": true, "archived": false },
+    { "id": "phone", "label": "เบอร์โทร", "type": "text", "required": true, "archived": false },
+    { "id": "requested_at", "label": "วันเวลาที่ต้องการ", "type": "datetime", "required": true, "archived": false },
+    { "id": "party_size", "label": "จำนวนคน", "type": "integer", "required": true, "archived": false },
+    { "id": "notes", "label": "หมายเหตุ", "type": "textarea", "required": false, "archived": false }
+  ]
+}

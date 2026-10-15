@@ -2,14 +2,15 @@
 // build time, so the user never has to copy the file into public/.
 
 import type { Plugin } from "vite";
-import { readServiceWorkerSource } from "./shared/read-sw";
-import { readWorkerBundleSource } from "./shared/read-worker";
+import { readServiceWorkerSource } from "./shared/read-sw.ts";
+import { readWorkerBundleSource } from "./shared/read-worker.ts";
 import {
   swResponseHeaders,
+  DEFAULT_SW_PATH,
   LEGACY_SW_PATH,
   labServiceWorkerPaths,
-} from "./shared/headers";
-import { LAB_SW_FILENAME, LEGACY_SW_FILENAME } from "../internal/lab-keys";
+} from "./shared/headers.ts";
+import { LAB_SW_FILENAME, LEGACY_SW_FILENAME } from "../internal/lab-keys.ts";
 
 const WORKER_ASSET_PATH = "/__worker__.js";
 

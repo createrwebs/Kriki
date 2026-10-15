@@ -35,9 +35,11 @@ final class AnthropicDriver implements StreamableChatDriver
         }
 
         $payload = $this->payload($request);
+        $client = $this->client($key);
+        if (isset($request->options['timeout'])) $client->timeout(max(1, (int) $request->options['timeout']));
 
         try {
-            $response = $this->client($key)->post('/v1/messages', $payload);
+            $response = $client->post('/v1/messages', $payload);
         } catch (ConnectionException $e) {
             throw ProviderException::unreachable($this->provider, $e->getMessage());
         }

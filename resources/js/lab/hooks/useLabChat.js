@@ -420,7 +420,9 @@ export function useLabChat({
             : stageForLane(intentPreview.lane)
         const previewContents = { ...vfsContentsRef.current, ...draftBuffersRef.current }
         const photographicBrief = needsPhotograph(intentSeed) || needsPhotograph(projectTitle || '')
+        const managedFormWorkflow = /\b(read_form|propose_form_change)\b/.test(intentSeed)
         const forceLookupVisuals = workspaceOpen
+            && ! managedFormWorkflow
             && ! autoRepair
             && photographicBrief
             && ! vfsHasPhotograph(previewContents)
@@ -470,7 +472,9 @@ export function useLabChat({
             messages,
             stage,
             context_pack: contextPack,
-            ...(forceLookupVisuals
+            ...(managedFormWorkflow
+                ? { tool_choice: { type: 'function', function: { name: 'read_form' } } }
+                : forceLookupVisuals
                 ? {
                     tool_choice: {
                         type: 'function',
@@ -1186,17 +1190,18 @@ export function useLabChat({
                         finishReason = null,
                         incompletePaths = [],
                         statusLabel = null,
+                        formWorkflow = false,
                     }) => {
-                        const needWrites = Boolean(forceTools)
+                        const needWrites = ! formWorkflow && (Boolean(forceTools)
                             || Boolean(mandateWriteFile)
                             || Boolean(exploreOnly)
                             || Boolean(autoContinue)
                             || ! (priorCalls || []).length
-                            || ! toolBatchHasWrite(priorCalls)
+                            || ! toolBatchHasWrite(priorCalls))
                         // After explore / empty batch / patch miss / max_tokens: hard-force write_file.
-                        const forceWriteFile = Boolean(mandateWriteFile)
+                        const forceWriteFile = ! formWorkflow && (Boolean(mandateWriteFile)
                             || Boolean(exploreOnly)
-                            || Boolean(autoContinue)
+                            || Boolean(autoContinue))
                         // Auto-continue is invisible to the user — it paints as a normal
                         // model wait, never as "auto-continuing…" (reads like an error).
                         const label = statusLabel
@@ -1204,7 +1209,9 @@ export function useLabChat({
                         streamThoughtStartedAt = 0
                         setTurnStatusLabel(label)
                         patchTurn({ turnStatus: label })
-                        const continuation = buildAgentContinuationPrompt({
+                        const continuation = formWorkflow
+                            ? `MANAGED FORM WORKFLOW: ${JSON.stringify(observations)}\nUse propose_form_change with the latest version and the requested field operations. Do not call write_file or SQL. Owner must click Apply.`
+                            : buildAgentContinuationPrompt({
                             observations,
                             toolCalls: priorCalls,
                             round,
@@ -1231,7 +1238,9 @@ export function useLabChat({
                             messages: loopMessages,
                             stage: AGENT_STAGES.EXECUTOR,
                             // Explore-only / patch-miss / empty batch / auto-continue: force write_file only.
-                            ...(forceWriteFile
+                            ...(formWorkflow
+                                ? { tool_choice: { type: 'function', function: { name: 'propose_form_change' } } }
+                                : forceWriteFile
                                 ? {
                                     tool_choice: {
                                         type: 'function',
@@ -1710,6 +1719,7 @@ export function useLabChat({
                 && (orch.commitResult?.paths?.length || 0) > 0,
             )
             const ranBuildTools = isExecutorTurn
+                && ! orch.formWorkflow
                 && orch.lane === LANES.BUILD
                 && ! orch.deferredBuild
                 && ! orch.clarify
@@ -1759,6 +1769,9 @@ export function useLabChat({
 
             // Present model text only — never splice callout copy into the reply (avoids duplicate UI).
             let presentText = full
+            if (orch.formWorkflow) presentText = orch.proposalPending
+                ? 'เตรียมข้อเสนอแก้ฟอร์มแล้ว กรุณาตรวจและกดนำไปใช้เป็นแบบร่าง ยังไม่ได้เปลี่ยนฟอร์มที่เปิดรับ'
+                : 'ยังไม่ได้เปลี่ยนฟอร์ม กรุณาตรวจข้อความผิดพลาดและขอข้อเสนอใหม่'
             // Discovery: never paint fenced code dumps into the chat panel.
             if (! workspaceOpen) {
                 presentText = presentDiscoveryReply(presentText)

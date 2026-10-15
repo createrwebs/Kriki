@@ -4,6 +4,7 @@ namespace App\Integrations;
 
 use App\Lab\Github\LabGithubImportLimits;
 use App\Models\WorkspaceOauthApp;
+use App\Support\Http\OAuthCallbackUrl;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -201,8 +202,7 @@ final class WorkspaceOauthAppStore
         if (array_key_exists('redirect_uri', $settings)) {
             $uri = trim((string) $settings['redirect_uri']);
             $out['redirect_uri'] = $uri !== ''
-                && filter_var($uri, FILTER_VALIDATE_URL)
-                && str_starts_with(strtolower($uri), 'https://')
+                && OAuthCallbackUrl::isAllowed($uri)
                 ? $uri
                 : '';
         }

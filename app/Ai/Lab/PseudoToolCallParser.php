@@ -12,6 +12,8 @@ final class PseudoToolCallParser
 {
     /** @var list<string> */
     private const ALLOWED = [
+        'read_form',
+        'propose_form_change',
         'list_dir',
         'file_search',
         'grep',

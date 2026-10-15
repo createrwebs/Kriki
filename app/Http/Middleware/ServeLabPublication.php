@@ -22,6 +22,7 @@ final class ServeLabPublication
 {
     public function handle(Request $request, Closure $next): Response
     {
+        if ($request->is('api/lab-forms/*')) return $next($request);
         if ($request->isMethod('HEAD') === false && ! $request->isMethod('GET')) {
             return $next($request);
         }

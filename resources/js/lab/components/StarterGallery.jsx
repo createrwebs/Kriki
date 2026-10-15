@@ -106,6 +106,8 @@ export function StarterGallery({ live = false, draft = '', onDraftChange }) {
         savePrefs(prefs)
     }, [prefs])
 
+    const closeWizard = useCallback(() => setWizardOpen(false), [])
+
     if (live) return null
 
     const updatePref = (key, value) => setPrefs((current) => ({ ...current, [key]: value }))
@@ -114,7 +116,6 @@ export function StarterGallery({ live = false, draft = '', onDraftChange }) {
         onDraftChange?.(applyStarterToDraft(draft, selected, prefs))
         setSelected(null)
     }
-    const closeWizard = useCallback(() => setWizardOpen(false), [])
 
     return (
         <section className="mx-auto mt-6 w-full max-w-4xl px-4 pb-5 sm:px-6" aria-labelledby="starter-gallery-title">

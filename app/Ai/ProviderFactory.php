@@ -26,7 +26,8 @@ final class ProviderFactory
             throw new AiException("Unknown AI provider [{$provider}]. Add it under config/ai.php → providers.");
         }
 
-        $driverKey = (string) ($config['driver'] ?? '');
+        $config['base_url'] = $this->settings->baseUrl($provider);
+        $driverKey = $this->settings->apiDriver($provider);
         $class = $this->drivers[$driverKey] ?? null;
         if (! is_string($class) || ! is_a($class, ChatDriver::class, true)) {
             throw new AiException("Unknown AI driver [{$driverKey}] for provider [{$provider}].");

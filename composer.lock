@@ -573,7 +573,7 @@
                     "homepage": "https://deep42.co"
                 }
             ],
-            "description": "A web-based installer wizard for Laravel applications, by Deep42.",
+            "description": "A web-based installer wizard for Laravel applications.",
             "homepage": "https://github.com/Deep42co/hitchhiker",
             "keywords": [
                 "deep42",

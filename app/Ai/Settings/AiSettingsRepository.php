@@ -48,6 +48,18 @@ final class AiSettingsRepository
         return $this->envApiKey($provider);
     }
 
+    public function baseUrl(string $provider): string
+    {
+        $stored = $this->tablesReady ? AiProviderCredential::where('provider', $provider)->value('base_url') : null;
+        return rtrim(trim((string) ($stored ?: config("ai.providers.{$provider}.base_url", ''))), '/');
+    }
+
+    public function apiDriver(string $provider): string
+    {
+        $stored = $this->tablesReady ? AiProviderCredential::where('provider', $provider)->value('api_driver') : null;
+        return (string) ($stored ?: config("ai.providers.{$provider}.driver", ''));
+    }
+
     public function hasStoredKey(string $provider): bool
     {
         if (! $this->tablesReady) {
@@ -115,13 +127,15 @@ final class AiSettingsRepository
     }
 
     /**
-     * @param  array<string, array{api_key?: string|null, enabled?: bool, clear?: bool}>  $rows
+     * @param  array<string, array{api_key?: string|null, base_url?: string|null, api_driver?: string|null, enabled?: bool, clear?: bool}>  $rows
      */
     public function saveProviderCredentials(array $rows): void
     {
         foreach ($rows as $provider => $data) {
             $row = AiProviderCredential::query()->firstOrNew(['provider' => $provider]);
             $row->enabled = (bool) ($data['enabled'] ?? $row->enabled ?? true);
+            if (array_key_exists('base_url', $data)) $row->base_url = trim((string) $data['base_url']) ?: null;
+            if (array_key_exists('api_driver', $data)) $row->api_driver = $data['api_driver'] ?: null;
 
             if (! empty($data['clear'])) {
                 $row->api_key = null;
@@ -146,6 +160,8 @@ final class AiSettingsRepository
         foreach ($providers as $name => $config) {
             $key = $this->apiKey((string) $name);
             $providers[$name]['api_key'] = $this->isEnabled((string) $name) ? $key : '';
+            $providers[$name]['base_url'] = $this->baseUrl((string) $name);
+            $providers[$name]['driver'] = $this->apiDriver((string) $name);
         }
 
         return $providers;

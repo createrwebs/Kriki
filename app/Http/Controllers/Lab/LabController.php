@@ -23,6 +23,9 @@ class LabController extends Controller
         $bootstrap = null;
 
         if ($project !== null) {
+            if (blank($project->project_type)) {
+                $project->forceFill(['project_type' => 'react'])->save();
+            }
             LabProjectAccess::assertOwner($project, $request->user());
             $workspaces->ensure($project);
             $project->markOpened();

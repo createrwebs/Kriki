@@ -497,7 +497,9 @@ export function stripTopLevelAwait(
       out = out.replace(SX_ASYNC_ARROW_G, "");
       return out;
     }
-    return code.replace(SX_AWAIT_LOOKAHEAD_G, "");
+    // Unknown syntax (e.g. JSX/TS) is not evidence of top-level await.
+    // Preserve it for the compiler instead of corrupting nested async code.
+    return code;
   }
 }
 

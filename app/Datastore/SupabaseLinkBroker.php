@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\UserDatastoreLink;
 use App\Support\DevTunnel;
 use App\Support\Http\LocalReturnPath;
+use App\Support\Http\OAuthCallbackUrl;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -47,7 +48,7 @@ final class SupabaseLinkBroker
             route('lab.oauth.supabase.return'),
         ] as $url) {
             $url = trim((string) $url);
-            if ($url !== '' && DevTunnel::isHttpsUrl($url)) {
+            if ($url !== '' && OAuthCallbackUrl::isAllowed($url)) {
                 return $url;
             }
         }
@@ -106,7 +107,7 @@ final class SupabaseLinkBroker
             throw new RuntimeException(__('dashboard.Supabase OAuth is not configured.'));
         }
 
-        if (! DevTunnel::isHttpsUrl($this->callbackUrl())) {
+        if (! OAuthCallbackUrl::isAllowed($this->callbackUrl())) {
             throw new RuntimeException(__('dashboard.Supabase requires an HTTPS callback URL. Set the redirect override to your tunnel URL.'));
         }
 
@@ -459,6 +460,18 @@ final class SupabaseLinkBroker
                     'can_revise' => $token !== '',
                 ];
             }
+
+            // Workspace credentials belong to the system, not to an unattached
+            // customer account. In particular, never inherit admin/SQL tokens.
+            return [
+                'host_url' => '',
+                'publishable_token' => '',
+                'steward_token' => '',
+                'console_token' => '',
+                'project_ref' => '',
+                'ready' => false,
+                'can_revise' => false,
+            ];
         }
 
         $workspace = app(WorkspaceDatastoreStore::class)->get(DatastoreKind::SUPABASE);

@@ -218,7 +218,7 @@
                     <krikkit:checkbox :label="__('dashboard.Clear stored secret')" wire:model="clearSecret" />
                 @endif
 
-                @if (str_starts_with(strtolower((string) $supabaseCallbackUrl), 'https://'))
+                @if (\App\Support\Http\OAuthCallbackUrl::isAllowed((string) $supabaseCallbackUrl))
                     <krikkit:field :label="__('dashboard.Callback URL')">
                         <krikkit:input
                             type="text"
@@ -230,7 +230,7 @@
                             tabindex="-1"
                         />
                         <x-slot:description>
-                            {{ __('dashboard.Add this callback URL in Supabase Dashboard → Organization → OAuth Apps. Enable Organizations and Projects read (and write if chat should apply SQL).') }}
+                            {{ __('dashboard.Add this exact callback URL in Supabase Organization Settings → OAuth Apps. Enable Organizations, Projects and Secrets read; Database write is needed to apply SQL. HTTP loopback callbacks are allowed only in local development.') }}
                         </x-slot:description>
                     </krikkit:field>
                 @else
@@ -335,6 +335,23 @@
                         <x-slot:description>{{ $visualKeyHint }}</x-slot:description>
                     @endif
                 </krikkit:field>
+
+                @unless ($isVisualCatalog)
+                    <krikkit:field label="Base URL">
+                        <krikkit:input type="url" wire:model="baseUrl" placeholder="https://www.toraapi.com/v1" />
+                        <x-slot:description>Use the API base URL, without /responses or /chat/completions.</x-slot:description>
+                        @error('baseUrl') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
+                    </krikkit:field>
+                    @if ($provider === 'openai')
+                        <krikkit:field label="API format">
+                            <select wire:model="apiDriver" class="w-full rounded-lg border border-krikkit-line bg-krikkit-canvas p-2 text-sm text-krikkit-fg">
+                                <option value="openai_compatible">Chat Completions</option>
+                                <option value="openai_responses">Responses API</option>
+                            </select>
+                            @error('apiDriver') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
+                        </krikkit:field>
+                    @endif
+                @endunless
 
                 @if ($maskedKey)
                     <krikkit:checkbox :label="__('dashboard.Clear stored key')" wire:model="clearKey" />

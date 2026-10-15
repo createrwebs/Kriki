@@ -43,6 +43,10 @@ class EditComponent extends Component
 
     public string $apiKey = '';
 
+    public string $baseUrl = '';
+
+    public string $apiDriver = '';
+
     public string $applicationId = '';
 
     public string $apiSecret = '';
@@ -126,6 +130,8 @@ class EditComponent extends Component
         $estimator = app(CostEstimator::class);
 
         $this->enabled = $settings->isEnabled($provider);
+        $this->baseUrl = $settings->baseUrl($provider);
+        $this->apiDriver = $settings->apiDriver($provider);
         $this->apiKey = '';
         $this->clearKey = false;
 
@@ -204,7 +210,11 @@ class EditComponent extends Component
             $this->validate([
                 'redirectUri' => $this->redirectUri === ''
                     ? ['nullable', 'string', 'max:512']
-                    : ['required', 'string', 'max:512', 'url', 'starts_with:https://'],
+                    : ['required', 'string', 'max:512', 'url', function ($attribute, $value, $fail) {
+                        if (! \App\Support\Http\OAuthCallbackUrl::isAllowed($value)) {
+                            $fail('Use HTTPS, or a loopback HTTP callback in the local development environment.');
+                        }
+                    }],
             ], [
                 'redirectUri.starts_with' => __('dashboard.Supabase requires an HTTPS callback URL. Set the redirect override to your tunnel URL.'),
             ]);
@@ -286,9 +296,18 @@ class EditComponent extends Component
             return;
         }
 
+        $this->validate([
+            'baseUrl' => ['required', 'url:http,https', 'max:512', 'not_regex:~/(responses|chat/completions)/?$~i'],
+            'apiDriver' => $this->provider === 'openai'
+                ? ['required', 'in:openai_compatible,openai_responses']
+                : ['required', 'in:'.config("ai.providers.{$this->provider}.driver")],
+        ]);
+
         $settings->saveProviderCredentials([
             $this->provider => [
                 'api_key' => $this->apiKey !== '' ? $this->apiKey : null,
+                'base_url' => $this->baseUrl,
+                'api_driver' => $this->apiDriver,
                 'enabled' => $this->enabled,
                 'clear' => $this->clearKey,
             ],

@@ -1,16 +1,16 @@
-import { r as p } from "./pako.esm-DQUXHgNn.js";
-import { C as re, D as te, E as ne, M as se, O as ie, S as ue, T as be, in as ce, j as de, k as oe, l as ae, sn as T, t as fe, u as Le, w as me } from "./host-DYc69tNt.js";
-import { j as X } from "./lab-keys-CG3byUca.js";
-import { d as he, m as F, p as ye } from "./offload-CwAvnXl4.js";
-import { existsSync as C, readFileSync as v } from "node:fs";
-import { dirname as M, join as f } from "node:path";
-import { fileURLToPath as O } from "node:url";
-import { Worker as D } from "node:worker_threads";
-import z from "node:http";
-import { createHash as Z } from "node:crypto";
-import { mkdir as q, readFile as h, readdir as H, unlink as J, writeFile as S } from "node:fs/promises";
-import { tmpdir as k } from "node:os";
-function B() {
+import { r as Y } from "./pako.esm-CwBHObRx.js";
+import { C as te, D as ne, E as re, M as ue, O as oe, S as se, T as ae, in as de, j as ce, k as ve, l as be, sn as N, t as ge, u as Ie, w as Le } from "./host-CsosBQTX.js";
+import { j as f } from "./lab-keys-CG3byUca.js";
+import { d as Ve, m as W, p as Oe } from "./offload-CgLcUAhI.js";
+import { existsSync as w, readFileSync as m } from "node:fs";
+import { dirname as j, join as g } from "node:path";
+import { fileURLToPath as P } from "node:url";
+import { Worker as k } from "node:worker_threads";
+import y from "node:http";
+import { createHash as D } from "node:crypto";
+import { mkdir as C, readFile as V, readdir as T, unlink as E, writeFile as R } from "node:fs/promises";
+import { tmpdir as q } from "node:os";
+function G() {
   return `"use strict";
 const { parentPort, workerData } = require("node:worker_threads");
 if (!parentPort) throw new Error("deepthought worker shim: missing parentPort");
@@ -65,152 +65,152 @@ if (typeof source !== "string" || !source) {
 (0, eval)(source);
 `;
 }
-function Q(r) {
-  const i = /* @__PURE__ */ new Set(), u = /* @__PURE__ */ new Set();
-  let b = null, t = null;
-  return r.on("message", (e) => {
-    const n = { data: e };
-    for (const d of i) try {
-      d(n);
+function H(t) {
+  const o = /* @__PURE__ */ new Set(), s = /* @__PURE__ */ new Set();
+  let a = null, n = null;
+  return t.on("message", (e) => {
+    const r = { data: e };
+    for (const c of o) try {
+      c(r);
     } catch {
     }
-    if (b) try {
-      b(n);
+    if (a) try {
+      a(r);
     } catch {
     }
-  }), r.on("error", (e) => {
-    const n = {
+  }), t.on("error", (e) => {
+    const r = {
       message: e.message,
       error: e
     };
-    for (const d of u) try {
-      d(n);
+    for (const c of s) try {
+      c(r);
     } catch {
     }
-    if (t) try {
-      t(n);
+    if (n) try {
+      n(r);
     } catch {
     }
   }), {
-    postMessage(e, n) {
-      n && n.length ? r.postMessage(e, n) : r.postMessage(e);
+    postMessage(e, r) {
+      r && r.length ? t.postMessage(e, r) : t.postMessage(e);
     },
     terminate() {
-      r.terminate();
+      t.terminate();
     },
-    addEventListener(e, n) {
-      e === "message" ? i.add(n) : e === "error" && u.add(n);
+    addEventListener(e, r) {
+      e === "message" ? o.add(r) : e === "error" && s.add(r);
     },
-    removeEventListener(e, n) {
-      e === "message" ? i.delete(n) : e === "error" && u.delete(n);
+    removeEventListener(e, r) {
+      e === "message" ? o.delete(r) : e === "error" && s.delete(r);
     },
     get onmessage() {
-      return b;
+      return a;
     },
     set onmessage(e) {
-      b = e;
+      a = e;
     },
     get onerror() {
-      return t;
+      return n;
     },
     set onerror(e) {
-      t = e;
+      n = e;
     }
   };
 }
-function y(r, i) {
-  return Q(new D(B(), {
+function O(t, o) {
+  return H(new k(G(), {
     eval: !0,
-    workerData: { __deepthoughtSource: r },
-    ...i ? { name: i } : {}
+    workerData: { __deepthoughtSource: t },
+    ...o ? { name: o } : {}
   }));
 }
-function Y(r) {
-  const i = r.host ?? "127.0.0.1", u = r.port ?? 0;
-  let b = null, t = null;
-  async function e(c) {
-    const s = [];
-    for await (const o of c) s.push(Buffer.isBuffer(o) ? o : Buffer.from(o));
-    return Buffer.concat(s);
+function M(t) {
+  const o = t.host ?? "127.0.0.1", s = t.port ?? 0;
+  let a = null, n = null;
+  async function e(d) {
+    const u = [];
+    for await (const v of d) u.push(Buffer.isBuffer(v) ? v : Buffer.from(v));
+    return Buffer.concat(u);
   }
-  function n(c) {
-    const s = {};
-    for (const [o, a] of Object.entries(c))
-      a != null && (s[o] = Array.isArray(a) ? a.join(", ") : a);
-    return s;
+  function r(d) {
+    const u = {};
+    for (const [v, b] of Object.entries(d))
+      b != null && (u[v] = Array.isArray(b) ? b.join(", ") : b);
+    return u;
   }
-  async function d(c, s) {
+  async function c(d, u) {
     try {
-      const o = new URL(c.url || "/", `http://${i}`), a = o.pathname.split("/").filter(Boolean);
-      if (a[0] !== "__virtual__" || a.length < 3) {
-        s.statusCode = 404, s.setHeader("Content-Type", "text/plain"), s.end("Not Found");
+      const v = new URL(d.url || "/", `http://${o}`), b = v.pathname.split("/").filter(Boolean);
+      if (b[0] !== "__virtual__" || b.length < 3) {
+        u.statusCode = 404, u.setHeader("Content-Type", "text/plain"), u.end("Not Found");
         return;
       }
-      const x = a[1], w = Number(a[2]);
-      if (!Number.isFinite(w)) {
-        s.statusCode = 400, s.setHeader("Content-Type", "text/plain"), s.end("Invalid port");
+      const l = b[1], X = Number(b[2]);
+      if (!Number.isFinite(X)) {
+        u.statusCode = 400, u.setHeader("Content-Type", "text/plain"), u.end("Invalid port");
         return;
       }
-      const m = await e(c), V = m.byteLength > 0 ? m.buffer.slice(m.byteOffset, m.byteOffset + m.byteLength) : void 0, l = a.slice(3), E = (l.length ? `/${l.join("/")}` : "/") + o.search, L = await r.proxy.handleRequest(x, w, (c.method || "GET").toUpperCase(), E, n(c.headers), V);
-      s.statusCode = L.statusCode;
-      for (const [N, A] of Object.entries(L.headers))
-        A != null && (Array.isArray(A), s.setHeader(N, A));
-      const I = L.body ? Buffer.isBuffer(L.body) ? L.body : Buffer.from(L.body) : Buffer.alloc(0);
-      s.end(I);
-    } catch (o) {
-      s.statusCode = 500, s.setHeader("Content-Type", "text/plain"), s.end(o instanceof Error ? o.message : String(o));
+      const L = await e(d), J = L.byteLength > 0 ? L.buffer.slice(L.byteOffset, L.byteOffset + L.byteLength) : void 0, A = b.slice(3), S = (A.length ? `/${A.join("/")}` : "/") + v.search, I = await t.proxy.handleRequest(l, X, (d.method || "GET").toUpperCase(), S, r(d.headers), J);
+      u.statusCode = I.statusCode;
+      for (const [x, i] of Object.entries(I.headers))
+        i != null && (Array.isArray(i), u.setHeader(x, i));
+      const F = I.body ? Buffer.isBuffer(I.body) ? I.body : Buffer.from(I.body) : Buffer.alloc(0);
+      u.end(F);
+    } catch (v) {
+      u.statusCode = 500, u.setHeader("Content-Type", "text/plain"), u.end(v instanceof Error ? v.message : String(v));
     }
   }
   return {
     kind: "local-http",
     get baseUrl() {
-      return t;
+      return n;
     },
     async start() {
-      if (b) return;
-      b = z.createServer((s, o) => {
-        d(s, o);
-      }), await new Promise((s, o) => {
-        b.once("error", o), b.listen(u, i, () => {
-          b.off("error", o), s();
+      if (a) return;
+      a = y.createServer((u, v) => {
+        c(u, v);
+      }), await new Promise((u, v) => {
+        a.once("error", v), a.listen(s, o, () => {
+          a.off("error", v), u();
         });
       });
-      const c = b.address();
-      c && typeof c == "object" ? t = `http://${i}:${c.port}` : t = `http://${i}`, r.proxy.setBaseUrl(t);
+      const d = a.address();
+      d && typeof d == "object" ? n = `http://${o}:${d.port}` : n = `http://${o}`, t.proxy.setBaseUrl(n);
     },
     async stop() {
-      const c = b;
-      b = null, t = null, c && await new Promise((s) => {
-        c.close(() => s());
+      const d = a;
+      a = null, n = null, d && await new Promise((u) => {
+        d.close(() => u());
       });
     }
   };
 }
-var g = 2, P = 6048e5;
-function j() {
-  return process.env.DEEPTHOUGHT_CACHE || f(k(), "deepthought-snapshots");
+var h = 2, z = 6048e5;
+function B() {
+  return process.env.DEEPTHOUGHT_CACHE || g(q(), "deepthought-snapshots");
 }
-function W(r, i) {
-  const u = Z("sha256").update(i).digest("hex");
-  return f(r, `${u}.bin`);
+function p(t, o) {
+  const s = D("sha256").update(o).digest("hex");
+  return g(t, `${s}.bin`);
 }
-async function U(r = j()) {
+async function Q(t = B()) {
   try {
-    await q(r, { recursive: !0 });
+    await C(t, { recursive: !0 });
   } catch {
     return null;
   }
   return (async () => {
     try {
-      const i = await H(r), u = Date.now();
-      for (const b of i)
-        if (b.endsWith(".meta.json"))
+      const o = await T(t), s = Date.now();
+      for (const a of o)
+        if (a.endsWith(".meta.json"))
           try {
-            const t = await h(f(r, b), "utf8"), e = JSON.parse(t);
-            if (e.schema !== g || e.createdAt != null && u - e.createdAt > P) {
-              const n = b.slice(0, -10);
-              await J(f(r, b)).catch(() => {
-              }), await J(f(r, `${n}.bin`)).catch(() => {
+            const n = await V(g(t, a), "utf8"), e = JSON.parse(n);
+            if (e.schema !== h || e.createdAt != null && s - e.createdAt > z) {
+              const r = a.slice(0, -10);
+              await E(g(t, a)).catch(() => {
+              }), await E(g(t, `${r}.bin`)).catch(() => {
               });
             }
           } catch {
@@ -218,29 +218,29 @@ async function U(r = j()) {
     } catch {
     }
   })(), {
-    async get(i) {
+    async get(o) {
       try {
-        const u = W(r, i), b = u.replace(/\.bin$/, ".meta.json"), t = await h(b, "utf8"), e = JSON.parse(t);
-        if (e.schema !== g || e.createdAt != null && Date.now() - e.createdAt > P) return null;
-        const n = await h(u);
-        if (n.byteLength < 4) return null;
-        const d = n.readUInt32LE(0), c = n.subarray(4, 4 + d), s = n.buffer.slice(n.byteOffset + 4 + d, n.byteOffset + n.byteLength);
+        const s = p(t, o), a = s.replace(/\.bin$/, ".meta.json"), n = await V(a, "utf8"), e = JSON.parse(n);
+        if (e.schema !== h || e.createdAt != null && Date.now() - e.createdAt > z) return null;
+        const r = await V(s);
+        if (r.byteLength < 4) return null;
+        const c = r.readUInt32LE(0), d = r.subarray(4, 4 + c), u = r.buffer.slice(r.byteOffset + 4 + c, r.byteOffset + r.byteLength);
         return {
-          manifest: JSON.parse(c.toString("utf8")),
-          data: s
+          manifest: JSON.parse(d.toString("utf8")),
+          data: u
         };
       } catch {
         return null;
       }
     },
-    async set(i, u) {
-      const b = W(r, i), t = b.replace(/\.bin$/, ".meta.json"), e = Buffer.from(JSON.stringify(u.manifest), "utf8"), n = Buffer.from(u.data), d = Buffer.alloc(4);
-      d.writeUInt32LE(e.byteLength, 0), await S(b, Buffer.concat([
-        d,
+    async set(o, s) {
+      const a = p(t, o), n = a.replace(/\.bin$/, ".meta.json"), e = Buffer.from(JSON.stringify(s.manifest), "utf8"), r = Buffer.from(s.data), c = Buffer.alloc(4);
+      c.writeUInt32LE(e.byteLength, 0), await R(a, Buffer.concat([
+        c,
         e,
-        n
-      ])), await S(t, JSON.stringify({
-        schema: g,
+        r
+      ])), await R(n, JSON.stringify({
+        schema: h,
         createdAt: Date.now()
       }));
     },
@@ -248,31 +248,31 @@ async function U(r = j()) {
     }
   };
 }
-function G() {
+function Z() {
   try {
-    const r = M(O(import.meta.url)), i = [
-      f(r, "..", "..", "__worker__.js"),
-      f(r, "..", "..", "..", "dist", "__worker__.js"),
-      f(process.cwd(), "dist", "__worker__.js")
+    const t = j(P(import.meta.url)), o = [
+      g(t, "..", "..", "__worker__.js"),
+      g(t, "..", "..", "..", "dist", "__worker__.js"),
+      g(process.cwd(), "dist", "__worker__.js")
     ];
-    for (const u of i) if (C(u)) return u;
+    for (const s of o) if (w(s)) return s;
   } catch {
   }
   return null;
 }
-function R() {
-  const r = Buffer.from(T, "base64");
-  return p(r, { to: "string" });
+function U() {
+  const t = Buffer.from(N, "base64");
+  return Y(t, { to: "string" });
 }
-function K(r, i) {
-  return !i && r && C(r) ? v(r, "utf8") : r && C(r) ? v(r, "utf8") : R();
+function K(t, o) {
+  return !o && t && w(t) ? m(t, "utf8") : t && w(t) ? m(t, "utf8") : U();
 }
-function _(r = {}) {
-  let i = r.workerPath ?? G(), u = null;
-  function b(t) {
-    if (!t && u) return u;
-    const e = K(i, !!t);
-    return t || (u = e), e;
+function _(t = {}) {
+  let o = t.workerPath ?? Z(), s = null;
+  function a(n) {
+    if (!n && s) return s;
+    const e = K(o, !!n);
+    return n || (s = e), e;
   }
   return {
     kind: "node",
@@ -280,36 +280,36 @@ function _(r = {}) {
     canCreateWorkers() {
       return !0;
     },
-    createWorker(t) {
-      if (t.type === "url") {
-        let d = t.url;
-        if (d.startsWith("file:") && (d = O(d)), !C(d)) throw new Error(`[DeepThoughtEngine] Node host cannot load worker URL: ${t.url}`);
-        const c = v(d, "utf8"), s = y(c, t.name);
-        return X(s, !0), s;
+    createWorker(n) {
+      if (n.type === "url") {
+        let c = n.url;
+        if (c.startsWith("file:") && (c = P(c)), !w(c)) throw new Error(`[DeepThoughtEngine] Node host cannot load worker URL: ${n.url}`);
+        const d = m(c, "utf8"), u = O(d, n.name);
+        return f(u, !0), u;
       }
-      if (t.type === "source") return y(t.source, t.name);
-      const e = b(t.embedded), n = y(e, t.name);
-      return i && !t.embedded && X(n, !0), n;
+      if (n.type === "source") return O(n.source, n.name);
+      const e = a(n.embedded), r = O(e, n.name);
+      return o && !n.embedded && f(r, !0), r;
     },
-    async probeProcessWorkerUrl(t) {
-      if (t) {
-        let n = t;
-        return n.startsWith("file:") && (n = O(n)), C(n) ? (i = n, u = null, n) : null;
+    async probeProcessWorkerUrl(n) {
+      if (n) {
+        let r = n;
+        return r.startsWith("file:") && (r = P(r)), w(r) ? (o = r, s = null, r) : null;
       }
-      const e = G();
-      return e ? (i = e, u = null, e) : null;
+      const e = Z();
+      return e ? (o = e, s = null, e) : null;
     },
     disposeGlobalResources() {
-      u = null;
+      s = null;
     },
-    async openSnapshotCache(t) {
-      return t.enableSnapshotCache === !1 || t.packageStore === "memory" ? null : U(r.cacheDir);
+    async openSnapshotCache(n) {
+      return n.enableSnapshotCache === !1 || n.packageStore === "memory" ? null : Q(t.cacheDir);
     },
-    createHttpIngress({ proxy: t, headless: e }) {
-      return e ? Y({
-        proxy: t,
-        host: r.httpHost,
-        port: r.httpPort
+    createHttpIngress({ proxy: n, headless: e }) {
+      return e ? M({
+        proxy: n,
+        host: t.httpHost,
+        port: t.httpPort
       }) : {
         kind: "programmatic",
         baseUrl: null
@@ -317,33 +317,33 @@ function _(r = {}) {
     }
   };
 }
-F(_());
+W(_());
 export {
-  fe as DeepThoughtEngine,
-  re as DeepThoughtFS,
-  ae as DeepThoughtFSClient,
-  Le as DeepThoughtFSClientError,
-  ue as DeepThoughtProcess,
-  te as DeepThoughtSWSetupError,
-  ie as DependencyInstaller,
-  re as LabFS,
-  ae as LabFSClient,
-  Le as LabFSClientError,
-  ue as LabProcess,
-  fe as LabRuntime,
-  ce as MemoryVolume,
-  me as RequestProxy,
-  Y as createLocalHttpIngress,
+  ge as DeepThoughtEngine,
+  te as DeepThoughtFS,
+  be as DeepThoughtFSClient,
+  Ie as DeepThoughtFSClientError,
+  se as DeepThoughtProcess,
+  ne as DeepThoughtSWSetupError,
+  oe as DependencyInstaller,
+  te as LabFS,
+  be as LabFSClient,
+  Ie as LabFSClientError,
+  se as LabProcess,
+  ge as LabRuntime,
+  de as MemoryVolume,
+  Le as RequestProxy,
+  M as createLocalHttpIngress,
   _ as createNodeHost,
-  de as discoverWorkspaces,
-  be as getProxyInstance,
-  he as getRuntimeHost,
-  oe as install,
-  U as openFsSnapshotCache,
-  se as readWorkspacePatterns,
-  ne as resetProxy,
-  ye as resetRuntimeHost,
-  F as setRuntimeHost
+  ce as discoverWorkspaces,
+  ae as getProxyInstance,
+  Ve as getRuntimeHost,
+  ve as install,
+  Q as openFsSnapshotCache,
+  ue as readWorkspacePatterns,
+  re as resetProxy,
+  Oe as resetRuntimeHost,
+  W as setRuntimeHost
 };
 
 //# sourceMappingURL=headless.mjs.map

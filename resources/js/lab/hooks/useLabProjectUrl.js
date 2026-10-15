@@ -14,6 +14,7 @@ export function useLabProjectUrl({ initialProject = null, initialWorkspace = fal
     })
     const [projectUuid, setProjectUuid] = useState(initialProject?.uuid || null)
     const [projectTitle, setProjectTitle] = useState(initialProject?.title || null)
+    const [projectType, setProjectType] = useState(initialProject?.project_type || 'react')
     const [composeModeReset, setComposeModeReset] = useState(0)
 
     useEffect(() => {
@@ -116,6 +117,8 @@ export function useLabProjectUrl({ initialProject = null, initialWorkspace = fal
         setProjectUuid,
         projectTitle,
         setProjectTitle,
+        projectType,
+        setProjectType,
         crumbTitle,
         /** Bumps when leaving workspace via history — LabApp resets composeMode to rail. */
         composeModeReset,

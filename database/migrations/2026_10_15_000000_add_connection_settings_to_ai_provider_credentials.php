@@ -1,0 +1,21 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::table('ai_provider_credentials', function (Blueprint $table) {
+            $table->string('base_url', 512)->nullable();
+            $table->string('api_driver', 40)->nullable();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::table('ai_provider_credentials', fn (Blueprint $table) => $table->dropColumn(['base_url', 'api_driver']));
+    }
+};

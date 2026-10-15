@@ -117,6 +117,7 @@ Route::get('/lab/oauth/supabase/return', [LabSupabaseOAuthController::class, 're
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/lab', LabController::class)->name('lab');
+    require __DIR__.'/lab-forms.php';
     Route::get('/lab/models', LabModelsController::class)->name('lab.models');
     Route::post('/lab/chat', LabChatController::class)->middleware('throttle:30,1')->name('lab.chat');
     Route::post('/lab/visuals', LabVisualsController::class)->middleware('throttle:30,1')->name('lab.visuals');

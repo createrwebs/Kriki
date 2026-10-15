@@ -3,6 +3,7 @@
 use App\Ai\Drivers\AnthropicDriver;
 use App\Ai\Drivers\GoogleGeminiDriver;
 use App\Ai\Drivers\OpenAiCompatibleDriver;
+use App\Ai\Drivers\OpenAiResponsesDriver;
 
 /**
  * AI gateway config.
@@ -64,6 +65,7 @@ return [
 
     'drivers' => [
         'openai_compatible' => OpenAiCompatibleDriver::class,
+        'openai_responses' => OpenAiResponsesDriver::class,
         'anthropic' => AnthropicDriver::class,
         'google_gemini' => GoogleGeminiDriver::class,
     ],
@@ -82,7 +84,7 @@ return [
         ],
 
         'openai' => [
-            'driver' => 'openai_compatible',
+            'driver' => env('OPENAI_API_DRIVER', 'openai_compatible'),
             'label' => 'OpenAI',
             'api_key' => env('OPENAI_API_KEY'),
             'base_url' => env('OPENAI_BASE_URL', 'https://modelflare.dev/v1'),
@@ -226,6 +228,13 @@ return [
             'family' => 'openai',
             'pricing' => ['input_per_mtok' => 20.00, 'output_per_mtok' => 50.00],
             'max_output' => 128000,
+        ],
+        'gpt-6.1-sol' => [
+            'provider' => 'openai',
+            'api_model' => 'gpt-6.1-sol',
+            'label' => 'GPT-6.1 Sol',
+            'family' => 'openai',
+            'max_output' => 32768,
         ],
         'gpt-5.6-sol' => [
             'provider' => 'openai',

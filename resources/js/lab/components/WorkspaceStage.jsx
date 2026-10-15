@@ -1,9 +1,11 @@
-import { useEffect, useRef } from 'react'
+import { lazy, Suspense, useEffect, useRef } from 'react'
 import { AppSettingsPanel } from './AppSettingsPanel'
 import { ConsoleTerminal, disposeConsoleSession } from './ConsoleTerminal'
 import { DatastoreDesk } from './DatastoreDesk'
 import { DomInspectPanel } from './DomInspectPanel'
 import { PreviewFrame } from './PreviewFrame'
+
+const FormsDesk = lazy(() => import('./forms/FormsDesk.jsx'))
 
 function PanelPlaceholder({ title, body }) {
     return (
@@ -146,7 +148,9 @@ export function WorkspaceStage({
                 <DatastoreDesk onConnect={onConnectDatastore} onChangeProject={onChangeDatastore} />
             )}
 
-            {panel !== 'console' && panel !== 'files' && panel !== 'preview' && panel !== 'app-settings' && panel !== 'tables' && (
+            {panel === 'forms' ? <Suspense fallback={<p className="p-6">กำลังโหลดฟอร์ม…</p>}><FormsDesk projectUuid={projectUuid} onAskLab={onAskLab} /></Suspense> : null}
+
+            {panel !== 'console' && panel !== 'files' && panel !== 'preview' && panel !== 'app-settings' && panel !== 'tables' && panel !== 'forms' && (
                 panel === 'editor' ? (
                     <PanelPlaceholder
                         title="Editor"

@@ -8,6 +8,8 @@ import { extractFileBlocks } from '../lib/chatTools.js'
 import { normalizeVfsPath } from '../lib/vfs.js'
 
 const ALLOWED = new Set([
+    'read_form',
+    'propose_form_change',
     'list_dir',
     'file_search',
     'grep',

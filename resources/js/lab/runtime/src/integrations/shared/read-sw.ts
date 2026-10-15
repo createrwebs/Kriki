@@ -7,7 +7,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
-import { LAB_SW_FILENAME, LEGACY_SW_FILENAME } from "../../internal/lab-keys";
+import { LAB_SW_FILENAME, LEGACY_SW_FILENAME } from "../../internal/lab-keys.ts";
 
 const SW_RELATIVE_PATHS = [
   `../${LAB_SW_FILENAME}`,

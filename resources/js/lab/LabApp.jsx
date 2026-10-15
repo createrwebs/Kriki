@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ChatColumn } from './components/ChatColumn'
+const FormProposalCard = lazy(() => import('./components/forms/FormProposalCard.jsx'))
 import { FileJumpOverlay } from './components/FileJumpOverlay'
 import { ConnectDatastoreModal } from './components/ConnectDatastoreModal'
 import { DATASTORE_AWAIT, DATASTORE_CANCELLED, DATASTORE_READY, readLabDatastoreStatus } from './lib/datastore'
@@ -86,12 +87,12 @@ export function LabApp({ initialProject = null, initialWorkspace = false } = {})
     )
     const handoffConsumedRef = useRef(false)
     const [workspaceCommand, setWorkspaceCommand] = useState(null)
+    const [formProposal, setFormProposal] = useState(null)
     const [newFileDefaultPath, setNewFileDefaultPath] = useState('src/untitled.tsx')
     const [domInspecting, setDomInspecting] = useState(false)
     const [inspectedElement, setInspectedElement] = useState(null)
     const inspectApplyRef = useRef(null)
     const [creditNotice, setCreditNotice] = useState(null)
-    const [projectType, setProjectType] = useState(() => initialProject?.project_type || 'react')
     const entitlement = useMemo(() => readLabEntitlement(), [])
     const githubImportEntitled = featureAllowed(entitlement, 'github_import')
     const githubProjectRef = useRef(null)
@@ -202,6 +203,7 @@ export function LabApp({ initialProject = null, initialWorkspace = false } = {})
         setProjectUuid,
         projectTitle,
         projectType,
+        setProjectType,
         setProjectTitle,
         crumbTitle,
         composeModeReset,
@@ -299,6 +301,19 @@ export function LabApp({ initialProject = null, initialWorkspace = false } = {})
     }, [vfs.openTablesFromChat])
 
     const rail = useChatRail({ building })
+    useEffect(() => {
+        setFormProposal(null)
+        const proposal = event => { if (event.detail?.projectUuid === projectUuid) setFormProposal(event.detail) }
+        const installed = event => {
+            if (event.detail?.projectUuid === projectUuid) vfs.applyVfsBatch(event.detail.files, { persist: false, asDraft: false })
+        }
+        window.addEventListener('krikkit-form-proposal', proposal)
+        window.addEventListener('krikkit-form-files-installed', installed)
+        return () => {
+            window.removeEventListener('krikkit-form-proposal', proposal)
+            window.removeEventListener('krikkit-form-files-installed', installed)
+        }
+    }, [projectUuid, vfs.applyVfsBatch])
 
     const chat = useLabChat({
         initialProject,
@@ -789,6 +804,7 @@ export function LabApp({ initialProject = null, initialWorkspace = false } = {})
 
     return (
         <div className="flex h-dvh flex-col overflow-hidden bg-krikkit-canvas">
+            {formProposal ? <Suspense fallback={null}><FormProposalCard key={`${formProposal.form_uuid}-${formProposal.base_version}`} proposal={formProposal} onClose={() => setFormProposal(null)} /></Suspense> : null}
             <LabHeader
                 building={building}
                 railW={rail.railW}

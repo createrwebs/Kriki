@@ -15,6 +15,8 @@ class AiProviderCredential extends Model
         'api_key',
         'api_secret',
         'enabled',
+        'base_url',
+        'api_driver',
     ];
 
     protected function casts(): array

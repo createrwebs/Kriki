@@ -3,7 +3,7 @@
  * New producers write both keys; consumers dual-read until legacy keys are removed.
  */
 
-import type { HostWorker } from "../host/types";
+import type { HostWorker } from "../host/types.ts";
 
 type Dict = Record<string, unknown>;
 

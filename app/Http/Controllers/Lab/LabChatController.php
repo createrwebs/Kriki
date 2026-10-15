@@ -38,6 +38,8 @@ class LabChatController extends Controller
         LabCreditMeter $credits,
         ProjectTitler $titler,
     ): JsonResponse|StreamedResponse {
+        // Provider/title calls happen before the streaming callback starts.
+        @set_time_limit(0);
         $modelId = $request->string('model')->toString() ?: $catalog->defaultId();
 
         $messages = [];
@@ -303,6 +305,20 @@ class LabChatController extends Controller
                     tools: $gatewayArgs['tools'],
                     toolChoice: $gatewayArgs['toolChoice'],
                 );
+                self::emitSse('done', $this->presentTurn(
+                    request: $request,
+                    response: $response,
+                    recorder: $recorder,
+                    entitlements: $entitlements,
+                    credits: $credits,
+                    identityUuid: $identityUuid,
+                    messages: $messages,
+                    autoRepair: $autoRepair,
+                    previewEdits: $previewEdits,
+                    stage: $stage,
+                    productName: $productName,
+                    projectType: $projectType,
+                ));
             } catch (UnknownModelException $e) {
                 self::emitSse('error', ['message' => $e->getMessage(), 'status' => 422]);
 
@@ -329,19 +345,6 @@ class LabChatController extends Controller
                 return;
             }
 
-            self::emitSse('done', $this->presentTurn(
-                request: $request,
-                response: $response,
-                recorder: $recorder,
-                entitlements: $entitlements,
-                credits: $credits,
-                identityUuid: $identityUuid,
-                messages: $messages,
-                autoRepair: $autoRepair,
-                previewEdits: $previewEdits,
-                stage: $stage,
-                productName: $productName,
-            ));
         }, 200, [
             'Content-Type' => 'text/event-stream; charset=utf-8',
             'Cache-Control' => 'no-cache, no-transform',

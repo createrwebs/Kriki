@@ -641,6 +641,13 @@ export function PreviewFrame({
     }, [inspectApplyRef])
 
     const onIframeLoad = useCallback(() => {
+        if (isPhpProject) {
+            setFrameBlocked(false)
+            setFrameReady(true)
+            setGuestPainted(true)
+            setStatus('live')
+            return
+        }
         const iframe = iframeRef.current
         if (previewLooksBooting(iframe) || ! previewLooksLive(iframe)) {
             setFrameReady(false)

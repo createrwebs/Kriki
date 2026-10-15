@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Route;
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
+        api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
         then: function () {
@@ -39,6 +40,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 : route('home');
         });
         $middleware->trustProxies(at: '*');
+        $middleware->prepend(\App\Http\Middleware\LabFormCors::class);
         $middleware->prepend(ServeLabPublication::class);
         $middleware->prepend(ProxyViteDevServer::class);
         $middleware->web(prepend: [

@@ -6,7 +6,7 @@ import {
   LAB_SW_PATH,
   LEGACY_SW_PATH,
   labServiceWorkerPaths,
-} from "../../internal/lab-keys";
+} from "../../internal/lab-keys.ts";
 
 export { DEFAULT_SW_PATH, LAB_SW_PATH, LEGACY_SW_PATH, labServiceWorkerPaths };
 

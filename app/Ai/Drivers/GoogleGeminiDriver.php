@@ -35,9 +35,11 @@ final class GoogleGeminiDriver implements StreamableChatDriver
 
         $payload = $this->payload($request);
         $url = $this->endpoint($request->apiModel, streaming: false);
+        $httpConfig = $this->config;
+        if (isset($request->options['timeout'])) $httpConfig['timeout'] = max(1, (int) $request->options['timeout']);
 
         try {
-            $response = ProviderHttp::make($this->config)
+            $response = ProviderHttp::make($httpConfig)
                 ->withQueryParameters(['key' => $key])
                 ->post($url, $payload);
         } catch (ConnectionException $e) {

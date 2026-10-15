@@ -90,11 +90,12 @@ final class SiteWorkspace
         $root = $this->root($project);
 
         if (is_dir($root) && is_file($root.'/.krikkit-kit')) {
-            if ($project->workspace_status !== 'ready') {
+            $expectedStack = ($project->project_type ?: 'react') === 'php' ? self::PHP_STACK : self::STACK;
+            if ($project->workspace_status !== 'ready' || $project->stack !== $expectedStack) {
                 $project->forceFill([
                     'workspace_status' => 'ready',
                     'kit_version' => self::KIT_VERSION,
-                    'stack' => ($project->project_type ?: 'react') === 'php' ? self::PHP_STACK : self::STACK,
+                    'stack' => $expectedStack,
                 ])->save();
             }
 

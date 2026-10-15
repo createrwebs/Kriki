@@ -38,9 +38,11 @@ final class OpenAiCompatibleDriver implements StreamableChatDriver
         }
 
         $payload = $this->payload($request);
+        $client = $this->client($key);
+        if (isset($request->options['timeout'])) $client->timeout(max(1, (int) $request->options['timeout']));
 
         try {
-            $response = $this->client($key)->post('/chat/completions', $payload);
+            $response = $client->post('/chat/completions', $payload);
         } catch (ConnectionException $e) {
             throw ProviderException::unreachable($this->provider, $e->getMessage());
         }

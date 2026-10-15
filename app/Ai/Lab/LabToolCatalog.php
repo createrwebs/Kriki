@@ -16,6 +16,23 @@ final class LabToolCatalog
     public function definitions(): array
     {
         return [
+            $this->fn('read_form', 'Read a managed booking form definition and latest version. Never returns customer submissions.', [
+                'form_uuid' => ['type' => 'string'],
+            ], ['form_uuid']),
+            $this->fn('propose_form_change', 'Propose booking field changes only. Does NOT save or activate. Owner must review and click Apply. Never use SQL or write_file to change managed definitions.', [
+                'form_uuid' => ['type' => 'string'],
+                'expected_version' => ['type' => 'integer'],
+                'operations' => ['type' => 'array', 'items' => ['type' => 'object', 'properties' => [
+                    'op' => ['type' => 'string', 'enum' => ['add', 'label', 'required', 'archive', 'reorder']],
+                    'id' => ['type' => 'string'], 'label' => ['type' => 'string'], 'required' => ['type' => 'boolean'],
+                    'ids' => ['type' => 'array', 'items' => ['type' => 'string']],
+                    'field' => ['type' => 'object', 'properties' => [
+                        'label' => ['type' => 'string'], 'type' => ['type' => 'string', 'enum' => ['text', 'textarea', 'number', 'select', 'checkbox']],
+                        'required' => ['type' => 'boolean'],
+                        'options' => ['type' => 'array', 'items' => ['type' => 'object', 'properties' => ['id' => ['type' => 'string'], 'label' => ['type' => 'string']], 'required' => ['id', 'label']]],
+                    ], 'required' => ['label', 'type']],
+                ], 'required' => ['op']]],
+            ], ['form_uuid', 'expected_version', 'operations']),
             $this->fn('list_dir', 'List entries under a VFS directory.', [
                 'path' => ['type' => 'string', 'description' => 'Directory path (e.g. src)'],
             ], ['path']),

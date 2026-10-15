@@ -59,6 +59,14 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(5)->by('lab-github-import|'.$actor);
         });
 
+        RateLimiter::for('lab-form-submissions', function (Request $request) {
+            $formId = $request->segment(3);
+            return [
+                Limit::perMinute(10)->by('form-ip|'.$formId.'|'.$request->ip()),
+                Limit::perMinute(100)->by('form-total|'.$formId),
+            ];
+        });
+
         foreach (AbilityRegistry::codes() as $code) {
             Gate::define($code, fn (?User $user) => $user?->allows($code) ?? false);
         }

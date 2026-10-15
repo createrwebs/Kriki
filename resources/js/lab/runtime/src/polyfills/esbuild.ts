@@ -838,8 +838,9 @@ function createVolumePlugin(externals?: string[], platform?: string, conditions?
             return { contents: "module.exports = {};", loader: "js" as const };
           }
 
-          // strip top-level await so esbuild doesn't reject CJS require() calls
-          if (/\bawait\b/.test(source) && !args.path.endsWith(".mjs")) {
+          // Only Node's CJS compatibility path needs synchronous top-level awaits.
+          // Browser ESM must preserve async form/API behavior verbatim.
+          if (platform === "node" && /\bawait\b/.test(source) && !args.path.endsWith(".mjs")) {
             source = stripTopLevelAwait(source, "topLevelOnly");
           }
 

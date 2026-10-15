@@ -10,6 +10,7 @@ const EXPLORE_TOOLS = new Set([
     'file_search',
     'grep',
     'read_file',
+    'read_form',
     'scan_dir',
 ])
 
@@ -415,6 +416,9 @@ export function buildAgentContinuationPrompt({
     ]
 
     const visualHits = (observations || []).filter((obs) => obs?.toolKind === 'lookup_visuals')
+    if ((observations || []).some(obs => obs?.hint === 'form_proposal_pending')) {
+        lines.push('MANAGED FORM: Proposal is awaiting owner Apply. Do not write files, run SQL, save, activate, or claim the change is already applied. Give a brief summary and stop.', '')
+    }
     if (visualHits.length) {
         lines.push(
             'PHOTOGRAPHS: Use visual.src from lookup_visuals artifacts as img src (or CSS background). Set alt from visual.alt. Never invent Unsplash/Pixabay/placeholder URLs.',

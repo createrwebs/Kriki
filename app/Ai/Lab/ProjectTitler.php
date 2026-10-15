@@ -150,6 +150,7 @@ final class ProjectTitler
             options: [
                 'temperature' => 0.6,
                 'max_tokens' => 256,
+                'timeout' => 20,
                 'prompt_cache_floor' => false,
             ],
         ));

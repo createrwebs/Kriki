@@ -4,7 +4,8 @@
  * Lab data-plane backends (Supabase today).
  * Steward / console tokens stay on the server. Survey may return the
  * publishable key so the agent can wire a browser client into the VFS.
- * Lab users attach a project via Organization OAuth. Env keys are a local fallback.
+ * Lab users attach a project via Organization OAuth. Env keys are a fallback
+ * only for explicit system-context calls, never for unattached Lab accounts.
  */
 return [
 

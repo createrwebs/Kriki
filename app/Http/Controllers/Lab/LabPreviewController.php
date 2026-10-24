@@ -4,10 +4,10 @@ namespace App\Http\Controllers\Lab;
 
 use App\Http\Controllers\Controller;
 use App\Lab\LabProjectAccess;
-use App\Lab\SiteWorkspace;
+use App\Lab\Runtime\RuntimePolicy;
 use App\Models\LabProject;
 use App\Support\Seo\PageSeo;
-use Illuminate\Http\BinaryFileResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
@@ -16,9 +16,14 @@ use Illuminate\Http\Response;
  */
 class LabPreviewController extends Controller
 {
-    public function __invoke(Request $request, LabProject $project, PageSeo $seo): Response
+    public function __invoke(Request $request, LabProject $project, PageSeo $seo, RuntimePolicy $runtime): Response|JsonResponse
     {
         LabProjectAccess::assertOwner($project, $request->user());
+
+        $verdict = $runtime->verdict($project);
+        if (! $verdict['can_execute']) {
+            return $this->unavailable($request, $project, $verdict);
+        }
 
         $seo->page([
             'title' => filled($project->title) ? $project->title : __('dashboard.Preview'),
@@ -36,53 +41,29 @@ class LabPreviewController extends Controller
             ->header('Cross-Origin-Embedder-Policy', 'credentialless');
     }
 
-    public function php(Request $request, LabProject $project, SiteWorkspace $workspace): Response|BinaryFileResponse
+    public function php(Request $request, LabProject $project, RuntimePolicy $runtime): Response|JsonResponse
     {
         LabProjectAccess::assertOwner($project, $request->user());
         if (($project->project_type ?: 'react') !== 'php') {
             abort(404);
         }
 
-        $root = realpath($workspace->ensure($project));
-        $relative = trim((string) $request->query('path', 'index.php'));
-        $relative = ltrim(str_replace('\\', '/', $relative), '/');
-        if ($relative === '' || str_contains($relative, '..') || ! preg_match('/^[A-Za-z0-9._\/-]+$/', $relative)) {
-            abort(404);
-        }
+        // Block all resources on this legacy endpoint, including active HTML/SVG.
+        // Ownership and path checks do not isolate executable customer code.
+        return $this->unavailable($request, $project, $runtime->verdict($project));
+    }
 
-        $absolute = realpath($root.DIRECTORY_SEPARATOR.str_replace('/', DIRECTORY_SEPARATOR, $relative));
-        if ($absolute === false || ! str_starts_with($absolute, $root.DIRECTORY_SEPARATOR) || ! is_file($absolute)) {
-            abort(404);
-        }
+    private function unavailable(Request $request, LabProject $project, array $runtime): Response|JsonResponse
+    {
+        $response = $request->expectsJson()
+            ? response()->json(['code' => 'runtime_unavailable', 'message' => $runtime['reason'], 'runtime' => $runtime], 423)
+            : response()->view('lab.preview.unavailable', ['project' => $project, 'runtime' => $runtime], 423);
 
-        if (strtolower(pathinfo($absolute, PATHINFO_EXTENSION)) !== 'php') {
-            return response()->file($absolute);
-        }
+        $response->headers->set('Cache-Control', 'no-store, private');
+        $response->headers->set('X-Content-Type-Options', 'nosniff');
+        $response->headers->set('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'self'; base-uri 'none'; form-action 'none'");
 
-        $previousDirectory = getcwd();
-        chdir($root);
-        try {
-            $render = static function (string $file): string {
-                ob_start();
-                try {
-                    include $file;
-                    return (string) ob_get_clean();
-                } catch (\Throwable $e) {
-                    ob_end_clean();
-                    throw $e;
-                }
-            };
-            $body = $render($absolute);
-        } catch (\Throwable $e) {
-            report($e);
-            return response('PHP preview failed.', 500)->header('Content-Type', 'text/plain; charset=utf-8');
-        } finally {
-            if ($previousDirectory !== false) {
-                chdir($previousDirectory);
-            }
-        }
-
-        return response($body)->header('Content-Type', 'text/html; charset=utf-8');
+        return $response;
     }
 
     private static function sanitizeGuestPath(mixed $raw): string

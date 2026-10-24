@@ -82,9 +82,9 @@ export function LabComposerBar({
                 />
             </div>
 
-            <SeedChips live={! landing} onPickSeed={onDraftChange} />
-            <StarterGallery live={! landing} draft={draft} onDraftChange={onDraftChange} />
-            <ThaiPromptLibrary live={! landing} onPickPrompt={onDraftChange} />
+            <SeedChips live={! landing} onPickSeed={onDraftChange} onSendSeed={onSend} />
+            <StarterGallery live={! landing} draft={draft} onDraftChange={onDraftChange} onSendSeed={onSend} />
+            <ThaiPromptLibrary live={! landing} onPickPrompt={onDraftChange} onSendSeed={onSend} />
         </>
     )
 }

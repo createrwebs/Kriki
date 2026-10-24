@@ -53,6 +53,13 @@ final class ProviderHttp
             $request = $request->withOptions(['curl' => $curl]);
         }
 
+        if (ini_get('curl.cainfo') === '' && ini_get('openssl.cafile') === '') {
+            $caBundle = 'C:\\MAMP\\bin\\apache\\bin\\cacert.pem';
+            $request = $request->withOptions([
+                'verify' => is_file($caBundle) ? $caBundle : false,
+            ]);
+        }
+
         return $request;
     }
 

@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Lab\SiteWorkspace;
+use App\Models\Deployment;
+use App\Models\AppSecret;
 use App\Support\ConstrainedUuid;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -44,6 +46,16 @@ class LabProject extends Model
     public function publication(): HasOne
     {
         return $this->hasOne(LabPublication::class);
+    }
+
+    public function deployments(): HasMany
+    {
+        return $this->hasMany(Deployment::class)->orderByDesc('created_at');
+    }
+
+    public function secrets(): HasMany
+    {
+        return $this->hasMany(AppSecret::class);
     }
 
     public function githubRemote(): HasOne

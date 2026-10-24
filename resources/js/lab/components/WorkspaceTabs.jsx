@@ -15,6 +15,7 @@ const PLUS_MENU = [
     { id: 'recently-opened', label: 'Recently opened', shortcut: `${MOD}E`, icon: 'history', group: 'file' },
     { id: 'supabase', label: 'Supabase', shortcut: '', icon: 'datastore', group: 'connect' },
     { id: 'forms', label: 'Forms', shortcut: '', icon: 'new-file', group: 'connect' },
+    { id: 'modules', label: 'Database widgets', shortcut: '', icon: 'datastore', group: 'connect' },
     { id: 'app-settings', label: 'App settings', shortcut: `${MOD},`, icon: 'settings', group: 'prefs' },
 ]
 
@@ -425,6 +426,9 @@ export function WorkspaceTabs({
         setMenuOpen(false)
 
         switch (itemId) {
+            case 'modules':
+                openTab('Database widgets', 'teal', 'modules')
+                break
             case 'forms':
                 openTab('Forms', 'teal', 'forms')
                 break

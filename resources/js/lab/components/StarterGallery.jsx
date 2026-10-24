@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { LAB_BTN_OUTLINE, LAB_BTN_PRIMARY } from '../lib/labConstants'
 import { applyStarterToDraft, LAB_STARTERS } from '../lib/labStarters'
 import { GuidedProjectWizard } from './GuidedProjectWizard'
+import { SeedCustomizeModal } from './SeedCustomizeModal'
 
 const TONE_OPTIONS = [
     { value: 'balanced', label: 'Balanced' },
@@ -59,8 +60,9 @@ function StarterCard({ starter, onPreview }) {
     )
 }
 
-export function StarterGallery({ live = false, draft = '', onDraftChange }) {
+export function StarterGallery({ live = false, draft = '', onDraftChange, onSendSeed = null }) {
     const [selected, setSelected] = useState(null)
+    const [studioSeed, setStudioSeed] = useState(null)
     const [prefs, setPrefs] = useState(readPrefs)
     const [category, setCategory] = useState('All')
     const [wizardOpen, setWizardOpen] = useState(false)
@@ -108,6 +110,24 @@ export function StarterGallery({ live = false, draft = '', onDraftChange }) {
 
     const closeWizard = useCallback(() => setWizardOpen(false), [])
 
+    const openStarterStudio = useCallback((starter) => {
+        if (! starter) return
+        setStudioSeed({
+            id: starter.id,
+            title: starter.title,
+            description: starter.description,
+            prompt: starter.basePrompt,
+            visualPrompt: starter.visualPrompt,
+            image: starter.image,
+            imageAlt: starter.imageAlt,
+            category: starter.category,
+            tags: starter.tags,
+            starterAccent: prefs.accent,
+            starterTone: prefs.tone,
+            starterDensity: prefs.density,
+        })
+    }, [prefs.accent, prefs.density, prefs.tone])
+
     if (live) return null
 
     const updatePref = (key, value) => setPrefs((current) => ({ ...current, [key]: value }))
@@ -137,7 +157,7 @@ export function StarterGallery({ live = false, draft = '', onDraftChange }) {
             </div>
 
             <div className="mt-3 flex gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-3 sm:overflow-visible">
-                {visible.map((starter) => <StarterCard key={starter.id} starter={starter} onPreview={setSelected} />)}
+                {visible.map((starter) => <StarterCard key={starter.id} starter={starter} onPreview={openStarterStudio} />)}
             </div>
 
             {selected ? (
@@ -165,13 +185,57 @@ export function StarterGallery({ live = false, draft = '', onDraftChange }) {
 
                         <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
                             <p id="starter-preview-description" className="max-w-md text-xs leading-relaxed text-krikkit-muted">This adds an editable product brief and visual direction to your prompt. It does not start generation yet.</p>
-                            <button type="button" onClick={apply} className={`rounded-full px-4 py-2.5 text-sm font-medium ${LAB_BTN_PRIMARY}`}>Use this direction</button>
+                            <div className="flex flex-wrap items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const seedObj = {
+                                            id: selected.id,
+                                            title: selected.title,
+                                            description: selected.description,
+                                            prompt: selected.basePrompt,
+                                            visualPrompt: selected.visualPrompt,
+                                            image: selected.image,
+                                            imageAlt: selected.imageAlt,
+                                            category: selected.category,
+                                            tags: selected.tags,
+                                            starterAccent: prefs.accent,
+                                            starterTone: prefs.tone,
+                                            starterDensity: prefs.density,
+                                        }
+                                        setSelected(null)
+                                        setStudioSeed(seedObj)
+                                    }}
+                                    className={`rounded-full px-3.5 py-2.5 text-xs font-medium ${LAB_BTN_OUTLINE}`}
+                                >
+                                    ตั้งค่าหลายหน้า · ธีมสี · รูปภาพ
+                                </button>
+                                <button type="button" onClick={apply} className={`rounded-full px-4 py-2.5 text-sm font-medium ${LAB_BTN_PRIMARY}`}>Use this direction</button>
+                            </div>
                         </div>
                     </div>
                 </div>
             ) : null}
 
             <GuidedProjectWizard open={wizardOpen} draft={draft} onDraftChange={onDraftChange} onClose={closeWizard} />
+            <SeedCustomizeModal
+                seed={studioSeed}
+                open={Boolean(studioSeed) && ! live}
+                onClose={() => setStudioSeed(null)}
+                onApply={(prompt) => {
+                    onDraftChange?.(prompt)
+                    setStudioSeed(null)
+                }}
+                onBuildNow={
+                    typeof onSendSeed === 'function'
+                        ? (prompt) => {
+                            onDraftChange?.(prompt)
+                            setStudioSeed(null)
+                            window.setTimeout(() => onSendSeed(prompt), 30)
+                        }
+                        : null
+                }
+            />
         </section>
     )
 }

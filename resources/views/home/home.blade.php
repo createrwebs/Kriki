@@ -2,66 +2,28 @@
     $site = app(\App\Support\Site\SiteSettings::class);
     $landing = app(\App\Support\Site\LandingCopy::class);
     $hasBlog = \App\Support\Content\PublicIndex::blogIsLive();
-    $hasPages = \App\Support\Content\PublicIndex::pagesAreLive();
-    $walkTabs = $landing->walkTabs();
 @endphp
 
 <x-layouts.app>
-    <div
-        x-data="{
-            menu: false,
-            stack: 0,
-            walk: 0,
-            walkView: 0,
-            walkGen: 0,
-            walkMs: 5000,
-            walkFade: false,
-            walkTimer: null,
-            walkCopy: {{ Illuminate\Support\Js::from($walkTabs) }},
-            faq: -1,
-            setWalk(index) {
-                if (index === this.walk) {
-                    this.walkGen++
-                    return
-                }
-
-                clearTimeout(this.walkTimer)
-                this.walk = index
-                this.walkGen++
-                this.walkFade = true
-                this.walkTimer = setTimeout(() => {
-                    this.walkView = index
-                    this.$nextTick(() => { this.walkFade = false })
-                }, 180)
-            },
-            advanceWalk(from) {
-                if (this.walk !== from) {
-                    return
-                }
-
-                if (this.walkCopy.length === 0) {
-                    return
-                }
-
-                this.setWalk((from + 1) % this.walkCopy.length)
-            },
-            destroy() {
-                clearTimeout(this.walkTimer)
-            },
-        }"
-        x-on:keydown.escape.window="menu = false"
-        class="min-h-screen bg-krikkit-canvas text-krikkit-fg"
-    >
+    <div lang="th" x-data="{ menu: false, example: 0, faq: -1 }"
+        x-on:keydown.escape.window="if (menu) { menu = false; $refs.menuButton.focus() }"
+        class="krikkit-sales min-h-screen">
+        @if ($localPresentationPreview ?? false)
+            <p class="sales-local-note" role="note">โหมดดูหน้าตาในเครื่อง · ไม่เชื่อมข้อมูลลูกค้าและไม่ส่งฟอร์มจริง</p>
+        @endif
+        <a href="#main" class="sales-skip">ข้ามไปเนื้อหา</a>
         @include('home.partials.header')
-        <main>
-            @include('home.partials.hero')
-            @include('home.partials.problem')
-            @include('home.partials.platform')
-            @include('home.partials.agents')
-            @include('home.partials.walkthrough')
-            @include('home.partials.integrations')
+        <main id="main">
+            @include('home.partials.sales-hero')
+            @include('home.partials.sales-sections')
             @include('home.partials.faq')
-            @include('home.partials.cta')
+            <section id="start" class="sales-final sales-wrap">
+                <div><p class="sales-kicker">พื้นที่สำหรับไอเดียถัดไปของคุณ</p><h2>{{ $landing->section('cta')['copy'] }}</h2></div>
+                <div class="sales-actions">
+                    <a class="sales-button" href="{{ $landing->href($landing->section('cta')['primary_href'] ?? '', auth()->check() ? route('lab') : $landing->guestEntryHref()) }}">{{ $landing->section('cta')['primary_label'] }}</a>
+                    <a class="sales-text-link" href="{{ $landing->href($landing->section('cta')['guest_secondary_href'] ?? '', route('contact')) }}">{{ $landing->section('cta')['guest_secondary_label'] }}</a>
+                </div>
+            </section>
         </main>
         @include('home.partials.footer')
     </div>

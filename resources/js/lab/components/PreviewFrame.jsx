@@ -18,9 +18,12 @@ import {
 } from '../orchestration/vfsHealSignal'
 import {
     PREVIEW_CHROME_REV,
-    PREVIEW_CHROME_SCRIPT,
+    createPreviewChromeScript,
+    connectPreviewChrome,
+    disconnectPreviewChrome,
     isPreviewChromeMessage,
     postToPreview,
+    probePreviewChrome,
     readInspectTheme,
 } from '../lib/previewChromeBridge'
 import { PreviewChrome, labelFromPath, nextViewportId, viewportWidthFor } from './PreviewChrome'
@@ -31,7 +34,6 @@ import { guestHref, labPreviewHref } from '../lib/labPreviewUrl'
 import { dispatchPreviewGuestError, isIgnorableGuestRuntimeError } from '../lib/previewGuestErrors'
 import { clearConsoleErrors } from '../lib/labErrors'
 import { discoverGuestRoutes, guestRouteKnown, guestRoutesAsPages } from '../lib/previewRoutes'
-import { previewLooksBooting, previewLooksHollow, previewLooksLive, previewLooksRefused, previewLooksViteGuest } from '../lib/previewProbe'
 import { usePreviewCover } from '../hooks/usePreviewCover'
 import { makeEditTarget } from '../lib/previewEditTargets'
 import {
@@ -57,7 +59,7 @@ function pageEntry(path) {
 async function installChromeBridge() {
     try {
         const eng = getLabRuntime() || await ensureLabSession()
-        await eng?.setPreviewScript?.(PREVIEW_CHROME_SCRIPT)
+        await eng?.setPreviewScript?.(createPreviewChromeScript(window.location.origin))
     } catch {
         /* ignore */
     }
@@ -89,6 +91,10 @@ export function PreviewFrame({
     visible = true,
 }) {
     const iframeRef = useRef(null)
+    const setPreviewIframe = useCallback((iframe) => {
+        disconnectPreviewChrome(iframeRef.current)
+        iframeRef.current = iframe
+    }, [projectUuid])
     const histRef = useRef({ stack: ['/'], index: 0 })
     const pathRef = useRef('/')
     const urlRef = useRef(null)
@@ -182,6 +188,7 @@ export function PreviewFrame({
     const remountAt = useCallback((path) => {
         const base = urlRef.current || getPreviewUrl()
         if (! base) return
+        guestPaintedRef.current = false
         setFrameReady(false)
         setGuestPainted(false)
         setFrameSrc(guestHref(base, path || '/'))
@@ -334,7 +341,7 @@ export function PreviewFrame({
     useEffect(() => {
         const onMessage = (event) => {
             const data = event?.data
-            if (! isPreviewChromeMessage(data)) return
+            if (! isPreviewChromeMessage(event, iframeRef.current)) return
 
             if (data.type === 'need-reload') {
                 remountAt(data.path || pathRef.current)
@@ -346,6 +353,20 @@ export function PreviewFrame({
                 setGuestPainted(true)
                 clearConsoleErrors()
                 markFrameReady()
+                return
+            }
+
+            if (data.type === 'preview-status') {
+                if (data.status === 'refused' || data.status === 'booting') {
+                    guestPaintedRef.current = false
+                    setFrameReady(false)
+                    setGuestPainted(false)
+                    if (data.status === 'refused' && refusedRetryRef.current < 12) {
+                        refusedRetryRef.current += 1
+                        setFrameBlocked(true)
+                        window.setTimeout(() => remountAt(pathRef.current), 280 * refusedRetryRef.current)
+                    }
+                }
                 return
             }
 
@@ -364,9 +385,9 @@ export function PreviewFrame({
                 return
             }
 
-            if (previewLooksBooting(iframeRef.current) || ! previewLooksLive(iframeRef.current)) return
+            if (!guestPaintedRef.current && data.type !== 'location') return
 
-            markFrameReady()
+            if (guestPaintedRef.current) markFrameReady()
 
             if (data.type === 'inspect-cancel') {
                 onInspectStop?.()
@@ -649,54 +670,27 @@ export function PreviewFrame({
             return
         }
         const iframe = iframeRef.current
-        if (previewLooksBooting(iframe) || ! previewLooksLive(iframe)) {
-            setFrameReady(false)
-            if (previewLooksRefused(iframe) && refusedRetryRef.current < 12) {
-                refusedRetryRef.current += 1
-                setFrameBlocked(true)
-                window.setTimeout(() => remountAt(pathRef.current), 280 * refusedRetryRef.current)
-            }
-            return
-        }
-        markFrameReady()
+        guestPaintedRef.current = false
+        setGuestPainted(false)
+        setFrameReady(false)
+        connectPreviewChrome(iframe, projectUuid)
         if (inspectingRef.current) {
             postToPreview(iframe, {
                 type: 'inspect-start',
                 theme: readInspectTheme(),
             })
         }
-    }, [markFrameReady, remountAt])
+    }, [markFrameReady, remountAt, projectUuid, isPhpProject])
 
-    // onLoad can miss (SW hang / Strict remount). Probe the guest document so
-    // a stale boot/dev phase cannot pin the "Starting preview…" overlay.
+    // Guest DOM is cross-origin. Readiness comes from the bound chrome bridge.
     useEffect(() => {
         if (! showIframe || frameReady) return undefined
 
-        let refusedQueued = false
-        const probe = () => {
-            const iframe = iframeRef.current
-            if (! iframe) return false
-            if (previewLooksBooting(iframe)) return false
-            if (previewLooksRefused(iframe)) {
-                if (! refusedQueued && refusedRetryRef.current < 12) {
-                    refusedQueued = true
-                    refusedRetryRef.current += 1
-                    setFrameBlocked(true)
-                    window.setTimeout(() => remountAt(pathRef.current), 280 * refusedRetryRef.current)
-                }
-                return false
-            }
-            if (! previewLooksLive(iframe)) return false
-            markFrameReady()
-            return true
-        }
-
-        if (probe()) return undefined
-        const id = window.setInterval(probe, 400)
+        const id = window.setInterval(() => probePreviewChrome(iframeRef.current, projectUuid), 400)
         return () => {
             window.clearInterval(id)
         }
-    }, [showIframe, frameReady, iframeNonce, markFrameReady, remountAt])
+    }, [showIframe, frameReady, iframeNonce, projectUuid])
 
     useEffect(() => {
         const onResync = () => {
@@ -711,24 +705,10 @@ export function PreviewFrame({
         return () => window.removeEventListener(PREVIEW_RESYNC_EVENT, onResync)
     }, [remountAt])
 
-    // Vite can die after a successful load (package.json restart). Keep watching.
+    // Check for a later failed/restarting guest through its bound bridge.
     useEffect(() => {
         if (! showIframe || ! frameReady) return undefined
-        const id = window.setInterval(() => {
-            const iframe = iframeRef.current
-            if (previewLooksBooting(iframe) || previewLooksHollow(iframe)) {
-                if (previewLooksViteGuest(iframe)) return
-                setFrameReady(false)
-                setGuestPainted(false)
-                return
-            }
-            if (! previewLooksRefused(iframe)) return
-            setFrameReady(false)
-            setFrameBlocked(true)
-            if (refusedRetryRef.current >= 12) return
-            refusedRetryRef.current += 1
-            remountAt(pathRef.current)
-        }, 900)
+        const id = window.setInterval(() => postToPreview(iframeRef.current, { type: 'preview-status' }), 900)
         return () => window.clearInterval(id)
     }, [showIframe, frameReady, remountAt])
 
@@ -751,7 +731,7 @@ export function PreviewFrame({
         }
         const onAck = (event) => {
             const data = event?.data
-            if (isPreviewChromeMessage(data) && data.type === 'inspect-state' && data.active) {
+            if (isPreviewChromeMessage(event, iframeRef.current) && data.type === 'inspect-state' && data.active) {
                 acked = true
             }
         }
@@ -840,7 +820,7 @@ export function PreviewFrame({
                     {showIframe ? (
                         <iframe
                             key={`preview:${iframeNonce}`}
-                            ref={iframeRef}
+                            ref={setPreviewIframe}
                             title={projectTitle}
                             className={[
                                 'h-full min-h-0 w-full border-0 bg-krikkit-surface',

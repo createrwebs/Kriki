@@ -6,6 +6,7 @@ import { DomInspectPanel } from './DomInspectPanel'
 import { PreviewFrame } from './PreviewFrame'
 
 const FormsDesk = lazy(() => import('./forms/FormsDesk.jsx'))
+const ModulesDesk = lazy(() => import('./modules/ModulesDesk.jsx'))
 
 function PanelPlaceholder({ title, body }) {
     return (
@@ -149,8 +150,9 @@ export function WorkspaceStage({
             )}
 
             {panel === 'forms' ? <Suspense fallback={<p className="p-6">กำลังโหลดฟอร์ม…</p>}><FormsDesk projectUuid={projectUuid} onAskLab={onAskLab} /></Suspense> : null}
+            {panel === 'modules' ? <Suspense fallback={<p className="p-6">กำลังโหลด widget…</p>}><ModulesDesk key={projectUuid} projectUuid={projectUuid} vfsContents={vfsContents} /></Suspense> : null}
 
-            {panel !== 'console' && panel !== 'files' && panel !== 'preview' && panel !== 'app-settings' && panel !== 'tables' && panel !== 'forms' && (
+            {panel !== 'console' && panel !== 'files' && panel !== 'preview' && panel !== 'app-settings' && panel !== 'tables' && panel !== 'forms' && panel !== 'modules' && (
                 panel === 'editor' ? (
                     <PanelPlaceholder
                         title="Editor"

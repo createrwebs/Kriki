@@ -17,168 +17,101 @@ final class LandingCopy
         return [
             'header' => [
                 'links' => [
-                    ['label' => 'About', 'href' => '#about'],
-                    ['label' => 'Platform', 'href' => '#platform'],
-                    ['label' => 'Use cases', 'href' => '#agents'],
-                    ['label' => 'Pricing', 'href' => 'pricing'],
-                    ['label' => 'Blog', 'href' => 'blog'],
-                    ['label' => 'Overview', 'href' => '#overview'],
+                    ['label' => 'ทำอะไรได้', 'href' => '#platform'],
+                    ['label' => 'ตัวอย่าง', 'href' => '#agents'],
+                    ['label' => 'วิธีเริ่มต้น', 'href' => '#walkthrough'],
+                    ['label' => 'แพ็กเกจ', 'href' => 'pricing'],
+                    ['label' => 'คำถามที่พบบ่อย', 'href' => '#questions'],
                 ],
-                'guest_link_label' => 'Log in',
-                'guest_link_href' => 'login',
-                'guest_cta_label' => 'Register',
-                'guest_cta_href' => 'register',
-                'auth_link_label' => '',
-                'auth_cta_label' => '',
-                'mobile_cta_label' => 'Contact',
-                'mobile_cta_href' => 'contact',
+                'guest_link_label' => 'เข้าสู่ระบบ', 'guest_link_href' => 'login',
+                'guest_cta_label' => 'เริ่มสร้างเว็บ', 'guest_cta_href' => '',
+                'auth_link_label' => 'โปรเจกต์ของฉัน', 'auth_cta_label' => 'เปิดพื้นที่สร้างเว็บ',
+                'mobile_cta_label' => 'เริ่มสร้างเว็บ', 'mobile_cta_href' => '',
             ],
             'hero' => [
-                'eyebrow' => 'Introducing Lab',
-                'title' => 'The workshop sites need to run from a single brief',
-                'copy' => 'Launch pages that write files, preview live, and publish — without leaving the desk.',
-                'primary_label' => 'Start a brief',
-                'primary_href' => '',
-                'secondary_label' => 'See Lab in action',
-                'secondary_href' => '#walkthrough',
-                'footnote' => 'Free pack with monthly Lab credits. Upgrade when you need more projects or domains.',
+                'eyebrow' => 'พื้นที่สร้างเว็บด้วย AI ของคุณ',
+                'title' => 'ไอเดียของคุณ เป็นเว็บที่แก้ต่อได้จริง',
+                'copy' => 'อธิบายเป็นภาษาไทย เลือกแนวทางที่ชอบ แล้วค่อย ๆ ปรับหน้าเว็บ เนื้อหา และฟอร์มในพื้นที่เดียว ไม่ต้องเริ่มทุกอย่างจากหน้าว่าง',
+                'primary_label' => 'เริ่มสร้างเว็บของคุณ', 'primary_href' => '',
+                'secondary_label' => 'ดูตัวอย่างที่เริ่มได้', 'secondary_href' => '#agents',
+                'footnote' => 'ตรวจผลงานก่อนเผยแพร่ · ความสามารถและเครดิตขึ้นอยู่กับแพ็กเกจ',
+                'preview_label' => 'จากคำอธิบาย สู่ภาพที่จับต้องได้',
+                'preview_prompt' => 'สร้างเว็บไซต์สตูดิโอออกแบบ โทนเรียบ มีผลงานเด่น เรื่องราวของทีม และหน้าติดต่อ ปรับให้ใช้บนมือถือได้',
+                'preview_note' => 'ภาพแนวทางเริ่มต้น ไม่ใช่ระบบร้านค้าที่เปิดใช้งานแล้ว',
             ],
             'problem' => [
-                'title' => 'Most teams still juggle a chat thread, a file export, and a separate preview tab just to ship one page. Lab keeps the brief, the files, and the canvas on one shared desk.',
-                'copy' => 'Outcome: a clickable preview in one sitting, markup you can open, and publish when the draft holds.',
+                'title' => 'เริ่มจากสิ่งที่อยากทำ ไม่ใช่สิ่งที่ต้องเรียนรู้ทั้งหมด',
+                'copy' => 'Krikkit รวมคำสั่ง ไฟล์ และตัวอย่างเว็บไว้ด้วยกัน คุณจึงตรวจสิ่งที่ AI ทำ และคุยเพื่อปรับต่อเป็นส่วน ๆ ได้ โดยยังมีโค้ดให้แก้ไขต่อ',
             ],
             'platform' => [
-                'eyebrow' => 'Platform',
-                'title' => 'A shared desk for every brief',
-                'copy' => 'Centralize the prompt, the file tree, and the live preview so nothing lives in a side chat.',
+                'eyebrow' => 'ออกแบบให้ค่อย ๆ ไปต่อได้',
+                'title' => 'ไม่ได้จบแค่ภาพสวย แต่มีงานให้คุณต่อยอด',
+                'copy' => 'เห็นทิศทางก่อนเริ่ม เลือกสิ่งที่ต้องการ และเก็บการทำงานไว้ในโปรเจกต์เดียว',
                 'layers' => [
-                    ['title' => 'Brief access', 'copy' => 'Every project keeps the prompt, files, and preview together so the next turn has context.'],
-                    ['title' => 'Canvas updates', 'copy' => 'The preview refreshes as files land. No export step to see what changed.'],
-                    ['title' => 'File memory', 'copy' => 'Markup stays in the tree. Come back later and pick up the same pages.'],
-                    ['title' => 'Publish controls', 'copy' => 'Preview, domain, and GitHub import sit behind the same workspace permissions.'],
-                    ['title' => 'Workspace-ready', 'copy' => 'Roles, sessions, and pack limits travel with the account — not a separate admin product.'],
+                    ['title' => 'มีตัวอย่างให้เริ่ม ไม่ต้องเดาจากหน้าว่าง', 'copy' => 'เลือกแนวเว็บไซต์หรือ dashboard แล้วปรับโทนสี ความหนาแน่น และรายละเอียดก่อนส่งให้ AI สร้าง'],
+                    ['title' => 'แก้ทีละหน้า ทีละส่วน', 'copy' => 'กำหนดหน้าที่ต้องการและช่องข้อมูลใน brief จากนั้นตรวจและสั่งแก้เนื้อหา โครงหน้า หรือองค์ประกอบต่อได้'],
+                    ['title' => 'โค้ดอยู่ในโปรเจกต์ของคุณ', 'copy' => 'ดูไฟล์ที่ AI สร้าง เปรียบเทียบกับ preview และนำไปพัฒนาต่อได้ตามความสามารถของแพ็กเกจ'],
+                    ['title' => 'เชื่อมข้อมูลเมื่อคุณพร้อม', 'copy' => 'ต่อยอดฟอร์มจองผ่านบัญชี Supabase ที่เชื่อมไว้ โดยต้องตั้งค่าฐานข้อมูลและทดสอบสิทธิ์ก่อนรับข้อมูลจริง'],
                 ],
-                'quote' => 'We went from a sentence to a page we could click through before the meeting ended.',
-                'quote_name' => 'Studio lead',
-                'quote_role' => 'Independent practice',
-                'stats' => [
-                    'One desk',
-                    'Real files',
-                    'Pack credits',
-                    'Your domain',
-                ],
+                'quote' => '', 'quote_name' => '', 'quote_role' => '',
+                'stats' => ['ตัวอย่างก่อนเริ่ม', 'ไฟล์ที่แก้ต่อได้', 'หลายหน้าในโปรเจกต์เดียว'],
             ],
             'agents' => [
-                'title' => 'Ship the pages teams actually need',
-                'copy' => 'Lab is used for the pages teams actually ship.',
+                'title' => 'เว็บแบบไหน ที่คุณอยากเริ่มวันนี้?',
+                'copy' => 'เลือกดูแนวทางพร้อม prompt ตัวอย่าง ภาพเหล่านี้เป็น starter preview ไม่ใช่คำรับประกันผลลัพธ์หรือระบบที่เชื่อมข้อมูลเสร็จแล้ว',
                 'items' => [
-                    ['title' => 'Studio', 'copy' => 'Portfolios, case studies, and visit pages from one brief.'],
-                    ['title' => 'Shop', 'copy' => 'Catalog grids and product pages you can open as files.'],
-                    ['title' => 'Docs', 'copy' => 'Guides and reference pages that stay in the same tree.'],
-                    ['title' => 'Events', 'copy' => 'Landing pages with dates, speakers, and tickets — then a domain.'],
-                    ['title' => 'Agency', 'copy' => 'Keep client drafts in Lab until they say ship. Files travel with the project.'],
-                    ['title' => 'Internal tools', 'copy' => 'A brief gets you a working first pass without waiting on a sprint.'],
+                    ['title' => 'เว็บไซต์ธุรกิจ', 'copy' => 'แนะนำบริการ ผลงาน และช่องทางติดต่อ ให้คนรู้จักธุรกิจในภาพเดียว', 'prompt' => 'สร้างเว็บไซต์สตูดิโอออกแบบ โทนเรียบ มีหน้าแรก บริการ ผลงาน และติดต่อ ใช้ภาษาไทยและรองรับมือถือ'],
+                    ['title' => 'ร้านค้าและแคตตาล็อก', 'copy' => 'จัดหมวดสินค้าและหน้ารายละเอียด เริ่มจากหน้าร้านก่อนต่อระบบออเดอร์ในอนาคต', 'prompt' => 'สร้างเว็บแคตตาล็อกของแต่งบ้านโทนอบอุ่น มีหมวดสินค้า ตัวกรอง และหน้ารายละเอียด ระบุชัดว่ายังไม่เชื่อมรับชำระเงินจริง'],
+                    ['title' => 'Dashboard และงานบริการ', 'copy' => 'วางหน้ารายการ ลูกค้า และช่องข้อมูล เช่น งานซ่อมรถ พร้อมระบุฐานข้อมูลที่ต้องเชื่อม', 'prompt' => 'ออกแบบ dashboard อู่ซ่อมรถ มีหน้าลูกค้า รถ ใบงานซ่อม และอะไหล่ ระบุช่องทะเบียนรถ อาการ และสถานะงาน เริ่มจาก UI พร้อมแสดงสิ่งที่ต้องเชื่อมฐานข้อมูล'],
                 ],
             ],
             'walkthrough' => [
-                'eyebrow' => 'Product walkthrough',
-                'title' => 'See Lab in action',
-                'copy' => 'Brief on the left, canvas on the right — from kickoff to a live page in one sitting.',
+                'eyebrow' => 'เส้นทางจากไอเดียถึงงานชิ้นแรก',
+                'title' => 'คุณเป็นคนกำหนดทิศทาง AI ช่วยลงมือ',
+                'copy' => 'ไม่ต้องสั่งให้สมบูรณ์ตั้งแต่ครั้งแรก เริ่มจากโครงที่ตรวจได้ แล้วเพิ่มรายละเอียดทีละขั้น',
                 'ascii_source' => null,
                 'tabs' => [
-                    [
-                        'label' => 'Write the brief',
-                        'title' => 'Say what the site is for',
-                        'copy' => 'Lab turns the brief into pages, type, and layout you can keep editing.',
-                        'image' => 'https://picsum.photos/seed/krikkit-walk-01/1200/800',
-                    ],
-                    [
-                        'label' => 'Review the canvas',
-                        'title' => 'Watch the preview update',
-                        'copy' => 'Open a file when you want a precise change. The canvas is a preview of those files.',
-                        'image' => 'https://picsum.photos/seed/krikkit-walk-02/1200/800',
-                    ],
-                    [
-                        'label' => 'Edit the files',
-                        'title' => 'Real markup you can open',
-                        'copy' => 'Builders hide the markup. Lab writes files in the tree — not a separate document.',
-                        'image' => 'https://picsum.photos/seed/krikkit-walk-03/1200/800',
-                    ],
-                    [
-                        'label' => 'Publish when ready',
-                        'title' => 'Ship with a clear view',
-                        'copy' => 'Preview first. Attach a domain when you are ready. Roll back by editing the files.',
-                        'image' => 'https://picsum.photos/seed/krikkit-walk-04/1200/800',
-                    ],
+                    ['label' => 'เล่าสิ่งที่ต้องการ', 'title' => 'บอกธุรกิจ กลุ่มลูกค้า และเป้าหมาย', 'copy' => 'ใช้ภาษาที่คุ้นเคย หรือเริ่มจาก prompt ตัวอย่างแล้วเปลี่ยนให้เป็นธุรกิจของคุณ', 'image' => ''],
+                    ['label' => 'เลือกหน้าและรายละเอียด', 'title' => 'กำหนดขอบเขตก่อนเริ่มสร้าง', 'copy' => 'เลือกหน้า โทนสี และช่องข้อมูลที่จำเป็น ฟอร์มที่บันทึกข้อมูลต้องเชื่อมระบบเพิ่มเติม', 'image' => ''],
+                    ['label' => 'ดูและปรับงาน', 'title' => 'ตรวจ preview ควบคู่กับไฟล์จริง', 'copy' => 'แก้เฉพาะจุดที่ยังไม่ใช่ ทั้งข้อความ หน้าตา และการทำงาน แล้วทดสอบปุ่มและหน้าต่าง ๆ', 'image' => ''],
+                    ['label' => 'ทดสอบก่อนนำขึ้น', 'title' => 'ตรวจให้ครบก่อนส่งถึงลูกค้า', 'copy' => 'เช็กมือถือ ลิงก์ ฟอร์ม สิทธิ์ข้อมูล และ build จากนั้นใช้ช่องทางเผยแพร่ที่ตั้งค่าไว้', 'image' => ''],
                 ],
             ],
             'integrations' => [
-                'eyebrow' => 'Integrations',
-                'title' => 'Connect the desk to what you already run.',
-                'cta_label' => 'View pricing',
-                'cta_href' => 'pricing',
+                'eyebrow' => 'ความสามารถที่ต้องรู้ก่อนเริ่ม',
+                'title' => 'เลือกใช้ให้ตรงงาน รู้ข้อจำกัดก่อนตัดสินใจ',
+                'cta_label' => 'ดูรายละเอียดแพ็กเกจ', 'cta_href' => 'pricing',
             ],
             'faq' => [
-                'title' => 'Frequently asked questions',
+                'title' => 'ก่อนเริ่ม คุณอาจอยากรู้',
                 'items' => [
-                    ['q' => 'What is Lab?', 'a' => 'Lab is the Krikkit workspace where a written brief becomes a working front-end — files, preview, and publish in one desk.'],
-                    ['q' => 'How is Lab different from a page builder?', 'a' => 'Builders hide the markup. Lab writes files you can open. The canvas is a preview of those files, not a separate document.'],
-                    ['q' => 'How long does a first page take?', 'a' => 'Most briefs show a clickable preview in one sitting. Fine edits happen in the file tree when you want them.'],
-                    ['q' => 'How do packs work?', 'a' => 'Free, Pro, and Agency set project ceilings, monthly Lab credits, domains, export, and GitHub import.'],
-                    ['q' => 'Can I use my own domain?', 'a' => 'Custom domains unlock on Pro and Agency. Preview is available while you work.'],
+                    ['q' => 'ไม่เขียนโค้ด เริ่มได้ไหม?', 'a' => 'เริ่มจากอธิบายสิ่งที่ต้องการและเลือกตัวอย่างได้ แต่ควรตรวจผลงานและทดสอบก่อนเผยแพร่ งานเชื่อมฐานข้อมูลหรือระบบเฉพาะทางอาจต้องมีผู้พัฒนาช่วยตั้งค่า'],
+                    ['q' => 'สร้างเว็บหลายหน้าได้หรือเปล่า?', 'a' => 'กำหนดหลายหน้าในโปรเจกต์เดียวได้ เช่น หน้าแรก บริการ และติดต่อ ผลที่สร้างต้องทดสอบเส้นทางและการนำทางอีกครั้ง ไม่ใช่เพียงเปลี่ยนภาพในหน้าเดียว'],
+                    ['q' => 'ฟอร์มที่ AI สร้างจะเก็บข้อมูลเลยไหม?', 'a' => 'ไม่เสมอไป ฟอร์มบนหน้าจอกับฟอร์มที่เชื่อมฐานข้อมูลเป็นคนละส่วน ระบบมีฟอร์มจองที่จัดการได้ แต่ต้องเชื่อม Supabase และเตรียมฐานข้อมูลก่อนใช้งานจริง'],
+                    ['q' => 'ขายสินค้า รับ PromptPay และแนบสลิปได้แล้วไหม?', 'a' => 'ระบบร้านค้า ตะกร้า ออเดอร์ PromptPay และหลังบ้านตรวจสลิปยังอยู่ในแผนพัฒนา ภาพหน้าร้านตัวอย่างไม่ใช่ระบบชำระเงินพร้อมใช้งาน'],
+                    ['q' => 'เอาโค้ดจาก GitHub มาใช้ได้ไหม?', 'a' => 'มีการเชื่อมและนำเข้า source จาก GitHub แต่ต้องตรวจภาษา framework dependency และทดสอบ build ไม่รับประกันว่า repository ทุกแบบจะทำงานได้'],
+                    ['q' => 'ราคาและค่า AI คิดอย่างไร?', 'a' => 'ดูแพ็กเกจที่เปิดขายในหน้าราคา จำนวนโปรเจกต์ เครดิต และสิทธิ์ขึ้นอยู่กับแพ็กเกจ ค่า AI ฐานข้อมูลหรือบริการภายนอกให้ตรวจเงื่อนไขเพิ่มเติม ไม่ใช่ค่ารับชำระเงินของร้านค้า'],
                 ],
             ],
             'cta' => [
-                'copy' => 'Run the next site from Lab. Start with a brief. Review the canvas. Publish when it holds.',
-                'primary_label' => 'Start a brief',
-                'primary_href' => '',
-                'guest_secondary_label' => 'Get in touch',
-                'guest_secondary_href' => 'contact',
+                'copy' => 'เริ่มให้เห็นภาพ แล้วค่อยทำให้เป็นของคุณ',
+                'primary_label' => 'เริ่มสร้างเว็บของคุณ', 'primary_href' => '',
+                'guest_secondary_label' => 'คุยเรื่องการใช้งาน', 'guest_secondary_href' => 'contact',
             ],
             'footer' => [
-                'blurb' => 'Start with a brief. Review the canvas. Publish when it holds.',
-                'subscribe_placeholder' => 'you@example.com',
-                'subscribe_label' => 'Join',
+                'blurb' => 'พื้นที่สร้างและต่อยอดเว็บไซต์ด้วย AI จากไอเดียภาษาไทย สู่ไฟล์ที่คุณตรวจและปรับต่อได้',
+                'subscribe_placeholder' => 'อีเมลของคุณ', 'subscribe_label' => 'รับข่าวสาร',
                 'columns' => [
-                    [
-                        'heading' => 'Pages',
-                        'links' => [
-                            ['label' => 'About', 'href' => '#about'],
-                            ['label' => 'Blog', 'href' => 'blog'],
-                            ['label' => 'Walkthrough', 'href' => '#walkthrough'],
-                            ['label' => 'Contact', 'href' => 'contact'],
-                            ['label' => 'Use cases', 'href' => '#agents'],
-                            ['label' => 'Integrations', 'href' => '#integrations'],
-                        ],
-                    ],
-                    [
-                        'heading' => 'Company',
-                        'links' => [
-                            ['label' => 'About', 'href' => '#about'],
-                            ['label' => 'Use cases', 'href' => '#agents'],
-                            ['label' => 'Overview', 'href' => '#overview'],
-                            ['label' => 'Pricing', 'href' => 'pricing'],
-                            ['label' => 'Contact', 'href' => 'contact'],
-                        ],
-                    ],
-                    [
-                        'heading' => 'Resources',
-                        'links' => [
-                            ['label' => 'Documentation', 'href' => 'https://doc.krikkit.space'],
-                            ['label' => 'Help center', 'href' => 'https://doc.krikkit.space'],
-                            ['label' => 'Live demo', 'href' => 'https://krikkit.space'],
-                            ['label' => 'FAQ', 'href' => '#questions'],
-                        ],
-                    ],
+                    ['heading' => 'ผลิตภัณฑ์', 'links' => [
+                        ['label' => 'ทำอะไรได้', 'href' => '#platform'], ['label' => 'ตัวอย่างเริ่มต้น', 'href' => '#agents'],
+                        ['label' => 'วิธีใช้งาน', 'href' => '#walkthrough'], ['label' => 'แพ็กเกจ', 'href' => 'pricing'],
+                    ]],
+                    ['heading' => 'ช่วยเหลือ', 'links' => [
+                        ['label' => 'คำถามที่พบบ่อย', 'href' => '#questions'], ['label' => 'ติดต่อเรา', 'href' => 'contact'],
+                        ['label' => 'เข้าสู่ระบบ', 'href' => 'login'],
+                    ]],
                 ],
-                'legal_heading' => 'Legal',
-                'legal_extra' => ['Security', 'Cookies'],
-                'social' => [
-                    ['label' => 'Twitter', 'href' => ''],
-                    ['label' => 'LinkedIn', 'href' => ''],
-                    ['label' => 'GitHub', 'href' => ''],
-                    ['label' => 'YouTube', 'href' => ''],
-                ],
+                'legal_heading' => 'นโยบาย', 'legal_extra' => [], 'social' => [],
             ],
         ];
     }
@@ -247,8 +180,23 @@ final class LandingCopy
             '#pricing' => route('pricing'),
             'contact' => route('contact'),
             'blog' => $this->blogHref(),
-            default => $stored,
+            default => $this->safeUrl($stored) ? $stored : $fallback,
         };
+    }
+
+    private function safeUrl(string $url): bool
+    {
+        if (preg_match('/[\x00-\x20\x7f\\\\]/', $url)) {
+            return false;
+        }
+        if (str_starts_with($url, '#')) {
+            return true;
+        }
+        if (str_starts_with($url, '/')) {
+            return ! str_starts_with($url, '//');
+        }
+
+        return (bool) preg_match('/^(https?:\/\/|mailto:|tel:)/i', $url);
     }
 
     public function guestEntryHref(): string
@@ -264,7 +212,14 @@ final class LandingCopy
         }
 
         if (str_starts_with($value, 'http://') || str_starts_with($value, 'https://') || str_starts_with($value, '/')) {
+            if (! $this->safeUrl($value)) {
+                return (string) $fallback;
+            }
             return $value;
+        }
+
+        if (str_contains($value, ':') || str_contains($value, '..') || str_contains($value, '\\')) {
+            return (string) $fallback;
         }
 
         return Storage::disk('public')->url($value);
@@ -301,7 +256,7 @@ final class LandingCopy
                 'copy' => (string) ($tab['copy'] ?? ''),
                 'image' => $this->mediaUrl(
                     is_string($tab['image'] ?? null) ? $tab['image'] : null,
-                    'https://picsum.photos/seed/krikkit-walk/1200/800',
+                    '',
                 ),
             ];
         }

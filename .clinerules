@@ -1,0 +1,23 @@
+# Token Optimization & Context Efficiency Rules
+
+You must operate under strict token-conservation protocols at all times:
+
+## 1. File Reading & Discovery Strategy
+- **Search Before Reading:** NEVER use `read_file` on files larger than 200 lines to explore or locate logic. Always use `search_files` (regex/grep) or `list_code_definition_names` first to locate exact line numbers or symbols.
+- **Avoid Redundant Reads:** Do not re-read files that are already present in the current conversation context unless they were modified externally.
+- **Ignore Generated & Asset Files:** Never read lockfiles, SVG files, migration histories, or mock JSON payloads over 50 lines. Ask the user for schema snippets if needed.
+
+## 2. Code Modification Efficiency
+- **Prefer Targeted Diffs:** Always use `replace_in_file` (SEARCH/REPLACE blocks) with the minimal necessary surrounding context (3-5 lines) instead of `write_to_file` (which rewrites the entire file and doubles output tokens).
+- **Batch Edits:** When modifying multiple sections within the same file, combine them into a single `replace_in_file` tool call rather than executing sequential calls.
+
+## 3. Terminal & CLI Output Control
+- **Quiet Flags:** When running CLI commands (npm, git, test runners, build tools), ALWAYS append quiet or concise flags to prevent terminal log flooding into context:
+  - Use `npm install --silent` or `--no-progress`
+  - Use `git status -s` or `git diff --stat` before running full diffs
+  - Run targeted single-file tests (e.g., `npx jest path/to/file.test.ts --silent`) instead of full test suites.
+- **Limit Log Tail:** If inspecting logs or large outputs, pipe with `| head -n 30` or `| tail -n 30`.
+
+## 4. Communication & Output Conciseness
+- **Zero Boilerplate:** Do not greet, apologize, or summarize what you are about to do before calling a tool. Execute the tool directly.
+- **No Code Echoing:** Never repeat unchanged code blocks in chat responses. Only explain what changed in 1-3 bullet points after completing the task.

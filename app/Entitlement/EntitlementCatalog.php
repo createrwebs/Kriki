@@ -33,7 +33,7 @@ final class EntitlementCatalog
      */
     public static function definitions(): array
     {
-        return [
+        $definitions = [
             [
                 'code' => self::PROJECTS,
                 'kind' => GrantKind::Quota,
@@ -77,6 +77,16 @@ final class EntitlementCatalog
                 'title' => 'GitHub import',
             ],
         ];
+        // Defined for explicit operator plan configuration. Existing plans get
+        // no new grants merely because a module was added to the catalog.
+        foreach (['booking', 'contact', 'news', 'catalog', 'orders', 'manual_payments', 'custom_data'] as $module) {
+            $definitions[] = [
+                'code' => 'lab_module_'.$module, 'kind' => GrantKind::Feature,
+                'window' => UsageWindow::None, 'meter' => 'none',
+                'title' => 'Lab module: '.str_replace('_', ' ', $module),
+            ];
+        }
+        return $definitions;
     }
 
     /**

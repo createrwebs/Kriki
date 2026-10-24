@@ -9,54 +9,8 @@
         <link href="https://fonts.bunny.net/css?family=sora:400,500,600,700&display=swap" rel="stylesheet" />
         <x-layouts.partials.brand />
         <x-layouts.partials.seo />
-        {{-- Claim / update SW before Vite. Guest listen:5173 must not steal Lab HMR. --}}
-        <script type="text/javascript">
-            (function () {
-                if (!('serviceWorker' in navigator)) return;
-                var VER = '29';
-                var SW = '/__krikkit_lab_sw__.js?v=host-vite-5173-29';
-                var post = function (sw) {
-                    try { sw.postMessage({ type: 'krikkit-host-active' }) } catch (e) {}
-                }
-                if (navigator.serviceWorker.controller) post(navigator.serviceWorker.controller)
-                navigator.serviceWorker.register(SW, { scope: '/' }).then(function (reg) {
-                    if (reg.active) post(reg.active)
-                    var installing = reg.installing
-                    if (!installing) return
-                    installing.addEventListener('statechange', function () {
-                        if (this.state !== 'activated') return
-                        try {
-                            if (sessionStorage.getItem('krikkit-sw') === VER) return
-                            sessionStorage.setItem('krikkit-sw', VER)
-                        } catch (e) {}
-                        location.reload()
-                    })
-                }).catch(function () {})
-                navigator.serviceWorker.ready.then(function (reg) {
-                    if (reg.active) post(reg.active)
-                }).catch(function () {})
-            })()
-        </script>
         @vite(['resources/css/app.css', 'resources/js/lab/lab.jsx'])
-        <script type="text/javascript">
-            (function () {
-                if (!('serviceWorker' in navigator)) return;
-                var origin = null;
-                try {
-                    var tag = document.querySelector('script[src*="/@@vite/client"]')
-                    if (tag && tag.src) origin = new URL(tag.src).origin
-                } catch (e) {}
-                var post = function (sw) {
-                    try {
-                        if (origin) sw.postMessage({ type: 'krikkit-host-vite', origin: origin })
-                    } catch (e) {}
-                }
-                if (navigator.serviceWorker.controller) post(navigator.serviceWorker.controller)
-                navigator.serviceWorker.ready.then(function (reg) {
-                    if (reg.active) post(reg.active)
-                }).catch(function () {})
-            })()
-        </script>
+        <script type="application/json" id="lab-runtime-config">@json(app(\App\Lab\Runtime\RuntimeOrigin::class)->configuration(request()))</script>
         <x-layouts.partials.themeStyle />
     </head>
     <body class="min-h-screen bg-krikkit-canvas font-sans text-krikkit-fg antialiased">
@@ -66,6 +20,22 @@
         <script type="application/json" id="lab-prefs">@json(\App\Support\Account\DeskPreferences::for(auth()->user()))</script>
         <script type="application/json" id="lab-pulse">@json(\App\Support\Ui\Pulse::pending())</script>
         @php
+            $userBusinessProfile = null;
+            if (auth()->check() && \Illuminate\Support\Facades\Schema::hasTable('user_business_profiles')) {
+                try {
+                    $bp = \App\Models\UserBusinessProfile::where('user_id', auth()->id())->first();
+                    if ($bp) {
+                        $userBusinessProfile = [
+                            'company_name' => (string) ($bp->company_name ?? ''),
+                            'business_description' => (string) ($bp->business_description ?? ''),
+                            'website_budget_amount' => (string) ($bp->website_budget_amount ?? ''),
+                            'website_budget_currency' => (string) ($bp->website_budget_currency ?? 'THB'),
+                        ];
+                    }
+                } catch (\Throwable) {
+                    $userBusinessProfile = null;
+                }
+            }
             $labConfig = [
                 // Import UI is always on (public URL import). Connect GitHub still needs OAuth.
                 'github_import' => true,
@@ -73,6 +43,7 @@
                 'auto_switch_gate' => (bool) config('lab.auto_switch_gate', true),
                 'auto_switch_gate_ms' => (int) config('lab.auto_switch_gate_ms', 15_000),
                 'entitlement' => $entitlementSnapshot,
+                'business_profile' => $userBusinessProfile,
                 'console' => app(\App\Support\Site\SiteSettings::class)->labConsole(),
                 'i18n' => [
                     'close' => __('dashboard.Close'),

@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
     isPreviewChromeMessage,
+    connectPreviewChrome,
+    disconnectPreviewChrome,
     postToPreview,
+    probePreviewChrome,
 } from '../lib/previewChromeBridge'
 import { dispatchPreviewGuestError, isIgnorableGuestRuntimeError } from '../lib/previewGuestErrors'
 import { guestHref, labPreviewPath, normalizeGuestPath } from '../lib/labPreviewUrl'
 import { makeEditTarget } from '../lib/previewEditTargets'
-import { previewLooksBooting, previewLooksLive } from '../lib/previewProbe'
 import { openWorkspaceForHandoff, subscribePreviewTunnel } from '../lib/previewTunnel'
 import { PreviewContextMenu } from '../components/PreviewContextMenu'
 import { LabGlyph } from '../components/Icons'
@@ -27,6 +29,10 @@ export function PreviewApp() {
     const uuid = boot.uuid || null
     const workspaceUrl = boot.workspaceUrl || (uuid ? `/lab/${uuid}/workspace` : '/lab')
     const iframeRef = useRef(null)
+    const setPreviewIframe = useCallback((iframe) => {
+        disconnectPreviewChrome(iframeRef.current)
+        iframeRef.current = iframe
+    }, [uuid])
     const [title] = useState(boot.title || 'Preview')
     const [guestPath, setGuestPath] = useState(() => normalizeGuestPath(boot.path || '/'))
     const [tunnelUrl, setTunnelUrl] = useState(null)
@@ -40,12 +46,8 @@ export function PreviewApp() {
     const syncFrameReady = useCallback(() => {
         const iframe = iframeRef.current
         if (! iframe) return
-        if (previewLooksBooting(iframe) || ! previewLooksLive(iframe)) {
-            setFrameReady(false)
-            return
-        }
-        setFrameReady(true)
-    }, [])
+        probePreviewChrome(iframe, uuid)
+    }, [uuid])
 
     const onPin = useCallback((spec) => {
         const target = makeEditTarget(spec)
@@ -99,12 +101,14 @@ export function PreviewApp() {
     useEffect(() => {
         const onMessage = (event) => {
             const data = event?.data
-            if (! isPreviewChromeMessage(data)) return
+            if (! isPreviewChromeMessage(event, iframeRef.current)) return
+            if (data.type === 'cover-painted') { setFrameReady(true); return }
+            if (data.type === 'preview-status') {
+                if (data.status === 'booting' || data.status === 'refused') setFrameReady(false)
+                return
+            }
             if (data.type === 'location' && typeof data.path === 'string') {
                 setGuestPath(normalizeGuestPath(data.path))
-                if (data.kind === 'init') {
-                    if (! previewLooksBooting(iframeRef.current)) setFrameReady(true)
-                }
                 return
             }
             if (data.type === 'need-reload') {
@@ -201,7 +205,7 @@ export function PreviewApp() {
             <div className="relative min-h-0 flex-1 bg-krikkit-canvas">
                 {frameSrc ? (
                     <iframe
-                        ref={iframeRef}
+                        ref={setPreviewIframe}
                         title={title}
                         className={[
                             'h-full min-h-0 w-full border-0 bg-krikkit-surface',
@@ -210,7 +214,10 @@ export function PreviewApp() {
                         sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups"
                         allow="cross-origin-isolated"
                         src={frameSrc}
-                        onLoad={syncFrameReady}
+                        onLoad={() => {
+                            connectPreviewChrome(iframeRef.current, uuid)
+                            syncFrameReady()
+                        }}
                     />
                 ) : null}
 

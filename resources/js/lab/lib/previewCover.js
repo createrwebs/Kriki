@@ -450,7 +450,7 @@ export function requestPreviewCover(iframe, timeout = 8000) {
         }
         const onMsg = (event) => {
             const data = event?.data
-            if (! isPreviewChromeMessage(data) || data.type !== 'cover-result' || data.id !== id) return
+            if (! isPreviewChromeMessage(event, iframe) || data.type !== 'cover-result' || data.id !== id) return
             if (! data.ok || ! data.dataUrl) {
                 finish(null)
                 return

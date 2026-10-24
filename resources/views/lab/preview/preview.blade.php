@@ -9,34 +9,8 @@
         <link href="https://fonts.bunny.net/css?family=sora:400,500,600,700&display=swap" rel="stylesheet" />
         <x-layouts.partials.brand />
         <x-layouts.partials.seo />
-        {{-- Register SW only. Do not send krikkit-host-active — that clears guest pathClaims in the workspace tab. --}}
-        <script type="text/javascript">
-            (function () {
-                if (!('serviceWorker' in navigator)) return;
-                var SW = '/__krikkit_lab_sw__.js?v=host-vite-5173-29';
-                navigator.serviceWorker.register(SW, { scope: '/' }).catch(function () {});
-            })();
-        </script>
         @vite(['resources/css/app.css', 'resources/js/lab/preview/preview.jsx'])
-        <script type="text/javascript">
-            (function () {
-                if (!('serviceWorker' in navigator)) return;
-                var origin = null;
-                try {
-                    var tag = document.querySelector('script[src*="/@@vite/client"]')
-                    if (tag && tag.src) origin = new URL(tag.src).origin
-                } catch (e) {}
-                var post = function (sw) {
-                    try {
-                        if (origin) sw.postMessage({ type: 'krikkit-host-vite', origin: origin })
-                    } catch (e) {}
-                }
-                if (navigator.serviceWorker.controller) post(navigator.serviceWorker.controller)
-                navigator.serviceWorker.ready.then(function (reg) {
-                    if (reg.active) post(reg.active)
-                }).catch(function () {})
-            })()
-        </script>
+        <script type="application/json" id="lab-runtime-config">@json(app(\App\Lab\Runtime\RuntimeOrigin::class)->configuration(request()))</script>
         <x-layouts.partials.themeStyle />
     </head>
     <body class="min-h-screen bg-krikkit-canvas font-sans text-krikkit-fg antialiased">

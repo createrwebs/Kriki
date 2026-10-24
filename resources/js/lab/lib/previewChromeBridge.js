@@ -4,13 +4,34 @@
  */
 export const PREVIEW_CHROME_SOURCE = 'krikkit-preview-chrome'
 
-export const PREVIEW_CHROME_REV = 47
+export const PREVIEW_CHROME_REV = 49
 
-export const PREVIEW_CHROME_SCRIPT = `(function(){
+export function createPreviewChromeScript(parentOrigin) {
+    if (! /^https?:$/.test(new URL(parentOrigin).protocol) || new URL(parentOrigin).origin !== parentOrigin) {
+        throw new Error('Preview bridge requires an exact HTTP(S) platform origin')
+    }
+    return `(function(){
   if (window.__krikkitPreviewChrome) return;
   window.__krikkitPreviewChrome = true;
   var SRC = ${JSON.stringify(PREVIEW_CHROME_SOURCE)};
   var REV = ${PREVIEW_CHROME_REV};
+  var PARENT_ORIGIN = ${JSON.stringify(parentOrigin)};
+  var binding = null;
+  var pendingErrors = [];
+
+  function postHost(payload) {
+    if (!binding) {
+      if (payload.type === 'guest-console-error') {
+        pendingErrors.push(payload);
+        if (pendingErrors.length > 20) pendingErrors.shift();
+      }
+      return false;
+    }
+    parent.postMessage(Object.assign({}, payload, {
+      source: SRC, projectUuid: binding.projectUuid, token: binding.token
+    }), PARENT_ORIGIN);
+    return true;
+  }
 
   function browserPath() {
     return (location.pathname || '/') + (location.search || '') + (location.hash || '');
@@ -30,12 +51,12 @@ export const PREVIEW_CHROME_SCRIPT = `(function(){
   function report(kind, path) {
     if (path) setGuestPath(path);
     try {
-      parent.postMessage({
+      postHost({
         source: SRC,
         type: 'location',
         path: currentPath(),
         kind: kind || 'sync'
-      }, '*');
+      });
     } catch (e) {}
   }
 
@@ -475,7 +496,7 @@ export const PREVIEW_CHROME_SCRIPT = `(function(){
     var data = describe(el);
     if (!data) return;
     try {
-      parent.postMessage({ source: SRC, type: 'inspect-select', element: data }, '*');
+      postHost({ source: SRC, type: 'inspect-select', element: data });
     } catch (e) {}
   }
 
@@ -667,13 +688,13 @@ export const PREVIEW_CHROME_SCRIPT = `(function(){
     textEditOriginal = '';
     var data = describe(host);
     try {
-      parent.postMessage({
+      postHost({
         source: SRC,
         type: 'text-edit-commit',
         element: data,
         text: next,
         original: original
-      }, '*');
+      });
     } catch (e) {}
     textEditLock = false;
   }
@@ -757,13 +778,13 @@ export const PREVIEW_CHROME_SCRIPT = `(function(){
     var data = describe(el);
     if (!data) return;
     try {
-      parent.postMessage({
+      postHost({
         source: SRC,
         type: 'contextmenu',
         element: data,
         x: ev.clientX,
         y: ev.clientY
-      }, '*');
+      });
     } catch (e) {}
     armContextDismiss();
   }
@@ -772,7 +793,7 @@ export const PREVIEW_CHROME_SCRIPT = `(function(){
     if (!contextMenuOpen) return;
     disarmContextDismiss();
     try {
-      parent.postMessage({ source: SRC, type: 'context-close' }, '*');
+      postHost({ source: SRC, type: 'context-close' });
     } catch (e) {}
   }
 
@@ -838,7 +859,7 @@ export const PREVIEW_CHROME_SCRIPT = `(function(){
     ev.preventDefault();
     stopInspect();
     try {
-      parent.postMessage({ source: SRC, type: 'inspect-cancel' }, '*');
+      postHost({ source: SRC, type: 'inspect-cancel' });
     } catch (e) {}
   }
 
@@ -855,7 +876,7 @@ export const PREVIEW_CHROME_SCRIPT = `(function(){
     if (inspecting) {
       hoverEl = hoverEl || selectedEl;
       schedulePaint('instant');
-      try { parent.postMessage({ source: SRC, type: 'inspect-state', active: true }, '*'); } catch (e) {}
+      try { postHost({ source: SRC, type: 'inspect-state', active: true }); } catch (e) {}
       return;
     }
     inspecting = true;
@@ -869,7 +890,7 @@ export const PREVIEW_CHROME_SCRIPT = `(function(){
     try {
       document.documentElement.style.cursor = 'crosshair';
     } catch (e) {}
-    try { parent.postMessage({ source: SRC, type: 'inspect-state', active: true }, '*'); } catch (e) {}
+    try { postHost({ source: SRC, type: 'inspect-state', active: true }); } catch (e) {}
     schedulePaint('instant');
   }
 
@@ -901,7 +922,7 @@ export const PREVIEW_CHROME_SCRIPT = `(function(){
       document.documentElement.style.cursor = '';
     } catch (e) {}
     hideOverlay();
-    try { parent.postMessage({ source: SRC, type: 'inspect-state', active: false }, '*'); } catch (e) {}
+    try { postHost({ source: SRC, type: 'inspect-state', active: false }); } catch (e) {}
   }
 
   var COVER_SKIP = { SCRIPT:1, NOSCRIPT:1, IFRAME:1, LINK:1, STYLE:1, META:1, TITLE:1, HEAD:1 };
@@ -1122,9 +1143,9 @@ export const PREVIEW_CHROME_SCRIPT = `(function(){
 
   var coverPaintedSent = false;
   function coverNotifyPainted() {
-    if (coverPaintedSent || !coverPainted()) return;
+    if (!binding || coverPaintedSent || !coverPainted()) return;
     coverPaintedSent = true;
-    try { parent.postMessage({ source: SRC, type: 'cover-painted' }, '*'); } catch (e) {}
+    try { postHost({ source: SRC, type: 'cover-painted' }); } catch (e) {}
   }
 
   function coverColor(ctx, value, fallback) {
@@ -1490,7 +1511,7 @@ export const PREVIEW_CHROME_SCRIPT = `(function(){
 
   function coverSend(id, dataUrl) {
     try {
-      parent.postMessage({ source: SRC, type: 'cover-result', id: id, ok: Boolean(dataUrl), dataUrl: dataUrl || '' }, '*');
+      postHost({ source: SRC, type: 'cover-result', id: id, ok: Boolean(dataUrl), dataUrl: dataUrl || '' });
     } catch (e) {}
   }
 
@@ -1568,8 +1589,29 @@ export const PREVIEW_CHROME_SCRIPT = `(function(){
 
   window.addEventListener('message', function(ev) {
     var d = ev && ev.data;
-    if (!d || d.source !== SRC) return;
+    if (ev.source !== parent || ev.origin !== PARENT_ORIGIN || !d || d.source !== SRC) return;
+    if (d.type === 'bridge-connect') {
+      if (typeof d.projectUuid !== 'string' || !d.projectUuid ||
+          typeof d.token !== 'string' || !/^[a-f0-9-]{36}$/.test(d.token)) return;
+      binding = { projectUuid: d.projectUuid, token: d.token };
+      coverPaintedSent = false;
+      report('init');
+      coverNotifyPainted();
+      var errors = pendingErrors;
+      pendingErrors = [];
+      errors.forEach(postHost);
+      return;
+    }
+    if (!binding || d.projectUuid !== binding.projectUuid || d.token !== binding.token) return;
     try {
+      if (d.type === 'preview-status') {
+        var booting = document.documentElement.getAttribute('data-krikkit-preview-boot') === '1';
+        var bodyText = String(document.body && document.body.innerText || '');
+        var refused = /ERR_CONNECTION_REFUSED|connection refused|ERR_EMPTY_RESPONSE/i.test(bodyText);
+        postHost({ type: 'preview-status', status: booting ? 'booting' : refused ? 'refused' : coverPainted() ? 'live' : 'waiting' });
+        coverNotifyPainted();
+        return;
+      }
       if (d.type === 'cover-capture') {
         coverCapture(d.id);
         return;
@@ -1593,7 +1635,7 @@ export const PREVIEW_CHROME_SCRIPT = `(function(){
       if (d.type === 'back') { history.back(); return; }
       if (d.type === 'forward') { history.forward(); return; }
       if (d.type === 'reload') {
-        parent.postMessage({ source: SRC, type: 'need-reload', path: currentPath() }, '*');
+        postHost({ source: SRC, type: 'need-reload', path: currentPath() });
         return;
       }
       if (d.type === 'inspect-start') { startInspect(d.theme || null); return; }
@@ -1669,7 +1711,7 @@ export const PREVIEW_CHROME_SCRIPT = `(function(){
     guestErrorSent[key] = now;
     var origin = guestFileFromStack(stack || message);
     try {
-      parent.postMessage({
+      postHost({
         source: SRC,
         type: 'guest-console-error',
         category: payload.category || 'RUNTIME_ERROR',
@@ -1678,7 +1720,7 @@ export const PREVIEW_CHROME_SCRIPT = `(function(){
         file: payload.file || origin.file || null,
         line: payload.line != null ? payload.line : origin.line,
         component: payload.component || guestComponentFromStack(stack || message) || null
-      }, '*');
+      });
     } catch (e) {}
   }
 
@@ -1749,16 +1791,62 @@ export const PREVIEW_CHROME_SCRIPT = `(function(){
 
   report('init');
 })();`
+}
+
+const previewBindings = new WeakMap()
+
+export function disconnectPreviewChrome(iframe) {
+    if (iframe) previewBindings.delete(iframe)
+}
+
+function currentBinding(iframe) {
+    const binding = iframe && previewBindings.get(iframe)
+    return binding && binding.window === iframe.contentWindow && binding.src === iframe.src ? binding : null
+}
+
+/** Connect on each load; the new token revokes messages from the previous document. */
+export function connectPreviewChrome(iframe, projectUuid) {
+    if (! iframe) return false
+    previewBindings.delete(iframe)
+    if (! iframe.contentWindow || typeof projectUuid !== 'string' || ! projectUuid.trim()) return false
+    try {
+        const url = new URL(iframe.src, window.location.href)
+        if (! /^https?:$/.test(url.protocol) || url.username || url.password) return false
+        const binding = {
+            window: iframe.contentWindow,
+            src: iframe.src,
+            origin: url.origin,
+            projectUuid,
+            token: crypto.randomUUID(),
+        }
+        previewBindings.set(iframe, binding)
+        return postToPreview(iframe, { type: 'bridge-connect' })
+    } catch {
+        previewBindings.delete(iframe)
+        return false
+    }
+}
 
 export function postToPreview(iframe, payload) {
-    const win = iframe?.contentWindow
-    if (! win) return false
+    const binding = currentBinding(iframe)
+    if (! binding) return false
     try {
-        win.postMessage({ source: PREVIEW_CHROME_SOURCE, ...payload }, '*')
+        binding.window.postMessage({
+            ...payload,
+            source: PREVIEW_CHROME_SOURCE,
+            projectUuid: binding.projectUuid,
+            token: binding.token,
+        }, binding.origin)
         return true
     } catch {
         return false
     }
+}
+
+/** Retry a missed handshake without rotating a live document's token. */
+export function probePreviewChrome(iframe, projectUuid) {
+    if (!currentBinding(iframe)) return connectPreviewChrome(iframe, projectUuid)
+    return postToPreview(iframe, { type: 'preview-status' })
 }
 
 /** Theme Customizer tokens for the inspect overlay (host → iframe). */
@@ -1784,6 +1872,10 @@ export function readInspectTheme() {
     }
 }
 
-export function isPreviewChromeMessage(data) {
-    return Boolean(data && data.source === PREVIEW_CHROME_SOURCE)
+export function isPreviewChromeMessage(event, iframe) {
+    const binding = currentBinding(iframe)
+    const data = event?.data
+    return Boolean(binding && event.source === binding.window && event.origin === binding.origin
+        && data?.source === PREVIEW_CHROME_SOURCE
+        && data.projectUuid === binding.projectUuid && data.token === binding.token)
 }

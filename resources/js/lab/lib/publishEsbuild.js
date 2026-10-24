@@ -91,8 +91,18 @@ export async function canUseEsbuildPublish(pod) {
     if (! entry || ! await fileExists(pod, '/index.html')) return false
     if (await hasExoticVitePlugins(pod)) return false
     const css = await resolveCssFile(pod, entry)
-    if (css && ! await fileExists(pod, '/node_modules/@tailwindcss/node/package.json')) {
-        return false
+    if (css) {
+        let needsTailwind = false
+        try {
+            const raw = await pod.fs.readFile(css, 'utf8')
+            const text = typeof raw === 'string' ? raw : String(raw)
+            needsTailwind = /@(?:import\s+['"]tailwindcss|tailwind\b)/.test(text)
+        } catch {
+            needsTailwind = false
+        }
+        if (needsTailwind && ! await fileExists(pod, '/node_modules/@tailwindcss/node/package.json')) {
+            return false
+        }
     }
     return true
 }
@@ -175,12 +185,34 @@ export async function writeEsbuildPublishScript(pod, plan) {
         '  }',
         '}',
         '',
-        'function writeIndexHtml() {',
+        'function collectCssFiles() {',
+        '  const seen = new Set()',
+        '  const list = []',
+        '  const add = (p) => {',
+        '    if (!p) return',
+        '    const norm = p.replace(/\\/+/g, "/")',
+        '    if (!seen.has(norm) && existsSync(norm)) { seen.add(norm); list.push(norm) }',
+        '  }',
+        '  try {',
+        '    const entryDir = dirname(ENTRY) || "/src"',
+        '    const src = readFileSync(ENTRY, "utf8")',
+        '    const re = /^\\s*import\\s+[\'"]([^\'"]+\\.css)[\'"]\\s*;?\\s*$/gm',
+        '    let m',
+        '    while ((m = re.exec(src))) {',
+        '      const rel = m[1].replace(/^\\.\\//, "")',
+        '      add(rel.startsWith("/") ? rel : `${entryDir}/${rel}`)',
+        '    }',
+        '  } catch { /* ignore */ }',
+        '  add(CSS_INPUT)',
+        '  return list',
+        '}',
+        '',
+        'function writeIndexHtml(hasCss) {',
         "  let html = readFileSync('/index.html', 'utf8')",
         "  html = html.replace(/<script[^>]+type=[\"']module[\"'][^>]*>\\s*<\\/script>/i, '')",
         "  html = html.replace(/<script[^>]+src=[\"']\\/src\\/[^\"']+[\"'][^>]*>\\s*<\\/script>/i, '')",
         '  const tags = []',
-        '  if (CSS_INPUT) tags.push(\'<link rel="stylesheet" href="/assets/index.css">\')',
+        '  if (hasCss) tags.push(\'<link rel="stylesheet" href="/assets/index.css">\')',
         '  tags.push(\'<script type="module" src="/assets/index.js"></script>\')',
         "  if (html.includes('</head>')) {",
         "    html = html.replace('</head>', `  ${tags.join('\\n  ')}\\n</head>`)",
@@ -238,22 +270,32 @@ export async function writeEsbuildPublishScript(pod, plan) {
         '  if (existsSync(JS_ENTRY)) unlinkSync(JS_ENTRY)',
         '} catch { /* ignore */ }',
         '',
-        'if (CSS_INPUT) {',
+        'const cssFiles = collectCssFiles()',
+        'if (cssFiles.length > 0) {',
         "  console.log('Production build: loading stylesheet compiler…')",
-        "  const { compile, optimize } = await import('@tailwindcss/node')",
-        '  const cssInput = readFileSync(CSS_INPUT, "utf8")',
-        '  const compiled = await compile(cssInput, {',
-        '    base: dirname(CSS_INPUT),',
-        '    onDependency() {},',
-        '  })',
-        '  const css = compiled.build(scanCandidates())',
-        '  const optimized = optimize(css, { minify: true })',
-        '  writeFileSync(`${ASSETS}/index.css`, optimized.code)',
+        '  const combinedCss = cssFiles.map((f) => readFileSync(f, "utf8")).join("\\n")',
+        '  let written = false',
+        '  if (/@(?:import\\s+[\'"]tailwindcss|tailwind\\b)/.test(combinedCss)) {',
+        '    try {',
+        "      const { compile, optimize } = await import('@tailwindcss/node')",
+        '      const compiled = await compile(combinedCss, {',
+        '        base: dirname(cssFiles[0]),',
+        '        onDependency() {},',
+        '      })',
+        '      const css = compiled.build(scanCandidates())',
+        '      const optimized = optimize(css, { minify: true })',
+        '      writeFileSync(`${ASSETS}/index.css`, optimized.code)',
+        '      written = true',
+        '    } catch { /* fallback to raw css below */ }',
+        '  }',
+        '  if (!written) {',
+        '    writeFileSync(`${ASSETS}/index.css`, combinedCss)',
+        '  }',
         "  console.log('Production build: stylesheet written.')",
         '}',
         '',
         'copyPublicDir()',
-        'writeIndexHtml()',
+        'writeIndexHtml(cssFiles.length > 0)',
         "console.log('Production build: index.html written.')",
         '',
     ].join('\n')

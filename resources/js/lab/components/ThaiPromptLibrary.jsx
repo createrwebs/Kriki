@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { LAB_BTN_OUTLINE, LAB_BTN_PRIMARY } from '../lib/labConstants'
 import { THAI_PROMPT_CATEGORIES, THAI_PROMPT_LIBRARY } from '../lib/labThaiPrompts'
+import { SeedCustomizeModal } from './SeedCustomizeModal'
 
 const INITIAL_VISIBLE = 8
 
@@ -16,10 +17,11 @@ export function filterThaiPrompts(prompts, query = '', category = 'ทั้ง�
     })
 }
 
-export function ThaiPromptLibrary({ live = false, onPickPrompt }) {
+export function ThaiPromptLibrary({ live = false, onPickPrompt, onSendSeed = null }) {
     const [query, setQuery] = useState('')
     const [category, setCategory] = useState('ทั้งหมด')
     const [expanded, setExpanded] = useState(false)
+    const [studioSeed, setStudioSeed] = useState(null)
 
     const filteredPrompts = useMemo(() => filterThaiPrompts(THAI_PROMPT_LIBRARY, query, category), [category, query])
     const visiblePrompts = expanded ? filteredPrompts : filteredPrompts.slice(0, INITIAL_VISIBLE)
@@ -36,7 +38,7 @@ export function ThaiPromptLibrary({ live = false, onPickPrompt }) {
                     <div>
                         <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-krikkit-accent">Thai prompt library</p>
                         <h2 id="thai-prompt-library-title" className="mt-1 text-base font-semibold text-krikkit-fg">ตัวอย่าง Prompt ภาษาไทย</h2>
-                        <p className="mt-1 max-w-2xl text-xs leading-relaxed text-krikkit-muted">เลือก prompt ธุรกิจที่ใกล้เคียง แล้วแก้ชื่อ ฟิลด์ และรายละเอียดต่อใน composer ได้ทันที</p>
+                        <p className="mt-1 max-w-2xl text-xs leading-relaxed text-krikkit-muted">เลือก prompt ธุรกิจที่ใกล้เคียง แล้วตั้งค่าจำนวนหน้า ธีมสี รูปภาพ หรือแก้ไขรายละเอียดต่อใน composer ได้ทันที</p>
                     </div>
                     <span className="rounded-full bg-krikkit-soft px-2.5 py-1 text-[11px] text-krikkit-muted">{THAI_PROMPT_LIBRARY.length} ชุด</span>
                 </div>
@@ -62,7 +64,7 @@ export function ThaiPromptLibrary({ live = false, onPickPrompt }) {
                     ))}
                 </div>
 
-                <p aria-live="polite" className="mt-3 text-[11px] text-krikkit-subtle">พบ {resultCount} ชุด · กด “ใช้ prompt” เพื่อใส่ลงช่องเขียน</p>
+                <p aria-live="polite" className="mt-3 text-[11px] text-krikkit-subtle">พบ {resultCount} ชุด · กด “ตั้งค่าหลายหน้า/ธีมสี” หรือ “ใช้ prompt” เพื่อใส่ลงช่องเขียน</p>
                 <div className="mt-2 grid gap-2 sm:grid-cols-2">
                     {visiblePrompts.map((prompt) => (
                         <article key={prompt.id} className="flex min-w-0 flex-col rounded-2xl border border-krikkit-line bg-krikkit-canvas p-3">
@@ -74,11 +76,29 @@ export function ThaiPromptLibrary({ live = false, onPickPrompt }) {
                                 <span className="shrink-0 text-[10px] text-krikkit-subtle">Prompt</span>
                             </div>
                             <p className="mt-2 line-clamp-3 text-[11px] leading-relaxed text-krikkit-muted">{prompt.prompt}</p>
-                            <div className="mt-3 flex items-center justify-between gap-2">
+                            <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                                 <div className="flex min-w-0 flex-wrap gap-1">
                                     {prompt.tags.slice(0, 2).map((tag) => <span key={tag} className="rounded-full bg-krikkit-soft px-2 py-1 text-[10px] text-krikkit-muted">{tag}</span>)}
                                 </div>
-                                <button type="button" onClick={() => onPickPrompt?.(prompt.prompt)} className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-medium ${LAB_BTN_PRIMARY}`}>ใช้ prompt</button>
+                                <div className="flex items-center gap-1.5">
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            setStudioSeed({
+                                                id: prompt.id,
+                                                title: prompt.title,
+                                                prompt: prompt.prompt,
+                                                description: prompt.prompt,
+                                                category: prompt.category,
+                                                tags: prompt.tags,
+                                            })
+                                        }
+                                        className={`shrink-0 rounded-full px-2.5 py-1.5 text-[11px] font-medium ${LAB_BTN_OUTLINE}`}
+                                    >
+                                        ตั้งค่าหน้า/สี/รูป
+                                    </button>
+                                    <button type="button" onClick={() => onPickPrompt?.(prompt.prompt)} className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-medium ${LAB_BTN_PRIMARY}`}>ใช้ prompt</button>
+                                </div>
                             </div>
                         </article>
                     ))}
@@ -91,6 +111,25 @@ export function ThaiPromptLibrary({ live = false, onPickPrompt }) {
                     </button>
                 ) : null}
             </div>
+
+            <SeedCustomizeModal
+                seed={studioSeed}
+                open={Boolean(studioSeed) && ! live}
+                onClose={() => setStudioSeed(null)}
+                onApply={(prompt) => {
+                    onPickPrompt?.(prompt)
+                    setStudioSeed(null)
+                }}
+                onBuildNow={
+                    typeof onSendSeed === 'function'
+                        ? (prompt) => {
+                            onPickPrompt?.(prompt)
+                            setStudioSeed(null)
+                            window.setTimeout(() => onSendSeed(prompt), 30)
+                        }
+                        : null
+                }
+            />
         </section>
     )
 }

@@ -9,6 +9,7 @@
         <nav class="flex items-center justify-between border-b border-krikkit-line px-4 py-4 sm:px-6 lg:px-10 lg:py-5">
             <a href="{{ route('home') }}" class="flex items-center text-krikkit-fg transition hover:opacity-80">
                 <x-site.mark />
+                <span class="sales-wordmark" aria-hidden="true">{{ $site->name() }}</span>
             </a>
 
             <div class="hidden items-center gap-1 lg:flex">
@@ -32,7 +33,7 @@
 
             <div class="flex items-center gap-4 lg:hidden">
                 <a href="{{ auth()->check() ? route('dashboard.home') : $landing->href($header['guest_link_href'] ?? '', route('login')) }}" class="text-sm font-medium text-krikkit-fg-soft">{{ auth()->check() ? (filled($header['auth_link_label'] ?? null) ? $header['auth_link_label'] : __('messages.Dashboard')) : $header['guest_link_label'] }}</a>
-                <button type="button" class="p-1 text-krikkit-fg" x-on:click="menu = ! menu" :aria-expanded="menu.toString()" aria-label="Open menu">
+                <button type="button" x-ref="menuButton" class="p-1 text-krikkit-fg" x-on:click="menu = ! menu" :aria-expanded="menu.toString()" aria-controls="sales-mobile-menu" aria-label="เปิดหรือปิดเมนู">
                     <span x-show="! menu"><krikkit:icon name="bars-3" class="size-6" /></span>
                     <span x-cloak x-show="menu"><krikkit:icon name="x-mark" class="size-6" /></span>
                 </button>
@@ -41,8 +42,11 @@
     </div>
 
     <div
-        class="overflow-hidden border-b border-krikkit-line bg-krikkit-canvas transition-[max-height,opacity] duration-300 lg:hidden"
-        x-bind:class="menu ? 'max-h-[600px] opacity-100' : 'pointer-events-none max-h-0 opacity-0'"
+        id="sales-mobile-menu"
+        x-cloak x-show="menu"
+        class="sales-mobile-menu-scroll overflow-y-auto border-b border-krikkit-line bg-krikkit-canvas lg:hidden"
+        style="max-height: calc(100dvh - 90px)"
+        x-transition.opacity.duration.150ms
     >
         <div class="mx-auto max-w-7xl border-x border-krikkit-line px-6 py-6">
             <nav class="flex flex-col">

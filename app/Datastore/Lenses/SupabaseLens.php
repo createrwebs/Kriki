@@ -68,7 +68,7 @@ final class SupabaseLens
     {
         $table = trim($table);
         $limit = min(100, max(1, $limit));
-        if ($table === '' || preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $table) !== 1) {
+        if ($table === '' || str_starts_with(strtolower($table), 'krikkit_') || preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $table) !== 1) {
             return ['ok' => false, 'table' => $table, 'rows' => [], 'total' => null, 'error' => 'Unknown table.'];
         }
 
@@ -228,6 +228,9 @@ final class SupabaseLens
 
         $tables = [];
         foreach (array_keys($names) as $name) {
+            // Managed records require their typed owner/project API predicates.
+            // The account-level schema/row browser must never expose them.
+            if (str_starts_with(strtolower($name), 'krikkit_')) continue;
             $schema = is_array($schemas[$name] ?? null) ? $schemas[$name] : [];
             $required = is_array($schema['required'] ?? null) ? $schema['required'] : [];
             $properties = is_array($schema['properties'] ?? null) ? $schema['properties'] : [];

@@ -57,13 +57,9 @@ final class LabToolCatalog
                 'count' => ['type' => 'integer', 'description' => 'How many photographs to return (1–8, default 4)'],
                 'orientation' => ['type' => 'string', 'enum' => ['landscape', 'portrait', 'square'], 'description' => 'Optional crop hint'],
             ], ['query']),
-            $this->fn('survey_datastore', 'Inspect the workspace data plane (Supabase). Returns connection status, public tables/columns, whether schema revisions are allowed, and the publishable client env (URL + anon key). Call this BEFORE write_file whenever the brief needs auth, CRUD, waitlists, or live data. Never invent table names — use the returned map. Steward / service-role keys are never returned.', [
+            $this->fn('survey_datastore', 'Inspect the connected data plane (Supabase). Returns connection status, public tables/columns and publishable client env (URL + anon key). Raw SQL revisions are disabled; managed schema changes require a project-scoped proposal and owner Apply. Call before file edits needing auth/CRUD; never invent tables or expose steward/service-role keys.', [
                 'fresh' => ['type' => 'boolean', 'description' => 'Skip the short schema cache and re-read the live project'],
             ], []),
-            $this->fn('revise_datastore', 'Apply SQL against the connected data plane after survey_datastore. Use for CREATE/ALTER tables, RLS, indexes, functions, and seed INSERT. Destructive SQL (DROP / ALTER / DELETE / GRANT) requires acknowledge_destructive=true. Never send service-role keys to the VFS. After a successful apply, call survey_datastore again.', [
-                'sql' => ['type' => 'string', 'description' => 'One or more SQL statements (semicolon-separated)'],
-                'acknowledge_destructive' => ['type' => 'boolean', 'description' => 'Required when the SQL drops, alters, deletes, or changes grants'],
-            ], ['sql']),
             $this->fn('github_status', 'Read the GitHub connection and this project remote (linked account, owner/repo/branch, local vs remote tree). Call before push/pull/fork when the user mentions GitHub, git, or version control.', [
                 'compare' => ['type' => 'boolean', 'description' => 'Include local vs GitHub tree (added/modified/removed)'],
             ], []),

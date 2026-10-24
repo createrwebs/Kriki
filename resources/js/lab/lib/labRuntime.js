@@ -3,10 +3,9 @@
  * Pods boot via LabRuntime.boot().
  */
 
-import { LabRuntime } from './labRuntimeEngine'
-import { pinLabRuntimeHost } from './labRuntimeHost'
+import { bootGuestRuntime, removePlatformRuntimeWorkers } from './guestRuntime'
 import { shimUninstallableBareImports } from './placeholderPackages'
-import { PREVIEW_CHROME_SCRIPT } from './previewChromeBridge'
+import { createPreviewChromeScript } from './previewChromeBridge'
 import { guestWriteNeedsReload, guestWriteRestartsDev, PREVIEW_RESYNC_EVENT } from './previewReload'
 import { normalizeLabPackageJson } from './toolchainPins'
 import { normalizeGuestRouter, GUEST_CUSTOM_ROUTER_REL_PATHS, isCustomRouterFile } from './normalizeGuestRouter'
@@ -17,16 +16,14 @@ import { normalizeVfsPath } from './vfs'
 
 export { guestWriteNeedsReload, guestWriteRestartsDev, looksLikeVitePageReload, PREVIEW_RESYNC_EVENT } from './previewReload'
 
-const SW_URL = '/__krikkit_lab_sw__.js?v=host-vite-5173-29'
 const SW_MIGRATION_KEY = 'krikkit-lab-sw-migration-v1'
-// Bump when public/__worker__.js polyfills change (avoids sticky Worker caches).
-const WORKER_URL = '/__worker__.js?v=preserve-browser-await-20261016'
 const LEGACY_IDB_RESET_KEY = 'krikkit-deepthought-legacy-cache-v1'
 
 /** @type {import('../runtime/dist/index').LabRuntime|null} */
 let engine = null
 /** @type {Promise<any>|null} */
 let readyPromise = null
+let sessionGeneration = 0
 /** @type {number|null} */
 let previewPort = null
 /** @type {string|null} */
@@ -230,7 +227,8 @@ function maybePatchViteConfigForLab(path, source) {
   var prev = watch.ignored;
   watch.ignored = !prev ? extra : Array.isArray(prev) ? prev.concat(extra) : [prev].concat(extra);
   server.watch = watch;
-  return Object.assign({}, config, { server: server });
+  var esbuild = Object.assign({ jsx: 'automatic' }, config.esbuild || {});
+  return Object.assign({}, config, { server: server, esbuild: esbuild });
 }
 function __krikkitLabWatchWrap(raw) {
   if (typeof raw === 'function') {
@@ -525,13 +523,13 @@ export function ensureLabSession(opts = {}) {
     if (engine) return Promise.resolve(engine)
     if (readyPromise) return readyPromise
 
+    const generation = sessionGeneration
     readyPromise = (async () => {
-        await resetLegacyLabRuntimeCaches()
-        await pinLabRuntimeHost()
+        await removePlatformRuntimeWorkers()
 
         const files = vfsContentsToFiles(opts.files)
         const workdir = opts.workdir || '/'
-        const pod = await LabRuntime.boot({
+        const pod = await bootGuestRuntime({
             files,
             workdir,
             // Bare `cd` / `~` follow $HOME. Engine default is /home/user (empty mock).
@@ -541,16 +539,15 @@ export function ensureLabSession(opts = {}) {
                 // In-memory history only — a VFS HISTFILE is watched by Vite (`page reload`).
                 HISTFILE: '/dev/null',
             },
-            swUrl: SW_URL,
-            workerUrl: WORKER_URL,
-            serviceWorker: true,
-            watermark: false,
-            preloadEsbuild: true,
             onServerReady: (port, url) => {
                 signalGuestListening(port, url)
             },
         })
 
+        if (generation !== sessionGeneration) {
+            await pod.teardown()
+            throw new Error('Runtime project changed during startup.')
+        }
         engine = pod
         for (const stale of [
             '/tmp/.krikkit_history',
@@ -566,14 +563,16 @@ export function ensureLabSession(opts = {}) {
             }
         }
         try {
-            await pod.setPreviewScript(PREVIEW_CHROME_SCRIPT)
+            await pod.setPreviewScript(createPreviewChromeScript(window.location.origin))
         } catch {
             /* chrome bridge is best-effort — preview still renders */
         }
         return pod
     })().catch((err) => {
-        readyPromise = null
-        engine = null
+        if (generation === sessionGeneration) {
+            readyPromise = null
+            engine = null
+        }
         throw err
     })
 
@@ -581,6 +580,7 @@ export function ensureLabSession(opts = {}) {
 }
 
 export async function destroyLabSession() {
+    sessionGeneration += 1
     const pod = engine
     engine = null
     readyPromise = null
@@ -758,7 +758,7 @@ export async function attachLabTerminal(host, xterm, opts = {}) {
     if (typeof pod.createTerminal !== 'function') {
         throw new Error('LabRuntime.createTerminal unavailable')
     }
-    const terminal = pod.createTerminal({
+    const terminal = await pod.createTerminal({
         Terminal: xterm.Terminal,
         FitAddon: xterm.FitAddon,
         theme: opts.theme,

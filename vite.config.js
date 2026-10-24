@@ -12,6 +12,8 @@ export default defineConfig({
                 'resources/js/app.js',
                 'resources/js/lab/lab.jsx',
                 'resources/js/lab/preview/preview.jsx',
+                'resources/js/builder/builder.jsx',
+                'resources/js/lab/guest/host.js',
             ],
             refresh: [
                 'app/**',

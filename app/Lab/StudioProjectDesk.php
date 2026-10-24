@@ -80,6 +80,11 @@ final class StudioProjectDesk
     {
         $project = $this->owned($user, $uuid);
         $this->workspace->forget($project);
+        if (\Illuminate\Support\Facades\Schema::hasTable('website_draft_projects')) {
+            \Illuminate\Support\Facades\DB::table('website_draft_projects')
+                ->where('lab_project_id', $project->id)
+                ->delete();
+        }
         $project->messages()->delete();
         $project->delete();
     }

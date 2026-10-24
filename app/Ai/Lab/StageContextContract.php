@@ -222,7 +222,7 @@ Managed booking forms:
 - Call survey_datastore in its own round BEFORE write_file whenever the brief needs a backend. Do not invent table or column names.
 - If survey_datastore is waiting, stay silent — Lab pauses until the user finishes Supabase OAuth and picks a project, then the tool returns ready. If they cancel, continue without a backend. Do not invent tables.
 - Wire the browser with @supabase/supabase-js as a singleton in src/lib/dataClient.js. Put VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY from client_env into .env via write_file. Never write a service-role / steward key into the VFS.
-- Schema changes go through revise_datastore (SQL). Set acknowledge_destructive=true only for DROP / ALTER / DELETE / GRANT that the user asked for. Then survey_datastore again.
+- Raw SQL revisions are disabled. Schema changes require an immutable project-scoped proposal and the owner's Apply action. An AI boolean, prompt or tool argument cannot approve a schema change. Keep widgets in setup-required state until their managed module is ready.
 - Default to email/password auth unless the user asks for another method. Prefer RLS + PostgREST over an ORM.
 
 GitHub (push, pull, fork, tree vs):

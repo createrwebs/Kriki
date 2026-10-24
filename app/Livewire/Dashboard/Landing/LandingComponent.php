@@ -6,10 +6,13 @@ use App\Livewire\Dashboard\Settings\Traits\ManagesSiteAssets;
 use App\Support\Site\LandingCopy;
 use App\Support\Site\SiteSettings;
 use App\Support\Ui\Pulse;
+use App\Models\SiteSetting;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
@@ -52,6 +55,47 @@ class LandingComponent extends Component
 
     /** @var array<string, mixed> */
     public array $footer = [];
+
+    public bool $copyProposalOpen = false;
+
+    #[Locked]
+    public string $copyProposalRevision = '';
+
+    public function previewSalesCopy(): void
+    {
+        Gate::authorize('settings.revise');
+        $payload = SiteSetting::query()->value('payload') ?? [];
+        $this->copyProposalRevision = hash('sha256', json_encode($payload['landing'] ?? [], JSON_THROW_ON_ERROR));
+        $this->copyProposalOpen = true;
+    }
+
+    public function applySalesCopy(): void
+    {
+        Gate::authorize('settings.revise');
+        abort_unless($this->copyProposalOpen && $this->copyProposalRevision !== '', 409);
+        DB::transaction(function (): void {
+            $row = SiteSetting::query()->lockForUpdate()->firstOrFail();
+            $payload = $row->payload ?? [];
+            $previous = $payload['landing'] ?? [];
+            abort_unless(hash_equals($this->copyProposalRevision, hash('sha256', json_encode($previous, JSON_THROW_ON_ERROR))), 409, 'Landing copy changed. Preview the proposal again.');
+            $next = LandingCopy::defaults();
+            // This is a copy update, not permission to discard uploaded media.
+            $next['walkthrough']['ascii_source'] = $previous['walkthrough']['ascii_source'] ?? null;
+            foreach ($next['walkthrough']['tabs'] as $index => &$step) {
+                $step['image'] = $previous['walkthrough']['tabs'][$index]['image'] ?? '';
+            }
+            unset($step);
+            $payload['landing_previous'] = $previous;
+            $payload['landing'] = $next;
+            $row->payload = $payload;
+            $row->save();
+        });
+        // SiteSettings caches its bag per instance; refresh after the explicit update.
+        $this->copyProposalOpen = false;
+        $this->copyProposalRevision = '';
+        $this->fillFrom(new LandingCopy(new SiteSettings));
+        $this->pulseOk('ใช้ข้อความภาษาไทยชุดใหม่แล้ว เก็บสำเนาเดิมไว้ใน landing_previous');
+    }
 
     public mixed $asciiFile = null;
 
@@ -125,7 +169,7 @@ class LandingComponent extends Component
 
     public function addAgent(): void
     {
-        $this->agents['items'][] = ['title' => '', 'copy' => ''];
+        $this->agents['items'][] = ['title' => '', 'copy' => '', 'prompt' => ''];
     }
 
     public function removeAgent(int $index): void
@@ -246,8 +290,25 @@ class LandingComponent extends Component
         }
 
         $walk = $landing->section('walkthrough');
+        $comparison = [];
+        if ($this->copyProposalOpen) {
+            $currentCopy = (new LandingCopy(new SiteSettings))->all();
+            foreach (LandingCopy::defaults() as $key => $proposedSection) {
+                $before = $after = [];
+                $currentSection = $currentCopy[$key] ?? [];
+                array_walk_recursive($currentSection, function ($value) use (&$before): void {
+                    if (is_string($value) && $value !== '') $before[] = $value;
+                });
+                array_walk_recursive($proposedSection, function ($value) use (&$after): void {
+                    if (is_string($value) && $value !== '') $after[] = $value;
+                });
+                $comparison[$key] = ['current' => $before, 'proposed' => $after];
+            }
+        }
 
         return view('livewire.dashboard.landing.landing', [
+            'proposedCopy' => LandingCopy::defaults(),
+            'copyComparison' => $comparison,
             'tabs' => $this->tabs(),
             'asciiPreview' => $this->previewUrl(
                 $this->asciiFile,
@@ -346,7 +407,7 @@ class LandingComponent extends Component
     private function cleanAgents(): array
     {
         $agents = $this->trimAssoc($this->agents);
-        $agents['items'] = $this->cleanPairs($this->agents['items'] ?? [], ['title', 'copy']);
+        $agents['items'] = $this->cleanPairs($this->agents['items'] ?? [], ['title', 'copy', 'prompt']);
 
         return $agents;
     }

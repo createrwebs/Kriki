@@ -1,2 +1,0 @@
-<?php echo $__env->make('errors.unavailable.unavailable', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
-<?php /**PATH D:\codea\krikkit-ai-website\resources\views\errors\503.blade.php ENDPATH**/ ?>

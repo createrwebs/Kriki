@@ -12,7 +12,6 @@ import { lookupLabVisuals } from '../lib/visuals.js'
 import { readForm, proposeFormChange } from '../lib/forms.js'
 import {
     awaitLabDatastoreReady,
-    reviseLabDatastore,
     surveyLabDatastore,
 } from '../lib/datastore.js'
 import {
@@ -73,21 +72,6 @@ function skippedDatastoreSurvey(error) {
             : 'Supabase OAuth is not configured. Continue without a backend. Do not invent tables or retry survey_datastore this turn.',
         {
             ready: false,
-            skipped: true,
-            reason: cancelled ? 'cancelled' : 'oauth_unconfigured',
-        },
-        'datastore_cancelled',
-    )
-}
-
-function skippedDatastoreRevision(error) {
-    const cancelled = error?.code === 'cancelled'
-    return observationOk(
-        'revise_datastore',
-        cancelled
-            ? 'User declined the data plane. Do not retry revise_datastore this turn. Continue without applying SQL.'
-            : 'Supabase OAuth is not configured. Do not retry revise_datastore this turn.',
-        {
             skipped: true,
             reason: cancelled ? 'cancelled' : 'oauth_unconfigured',
         },
@@ -494,104 +478,10 @@ export async function applyToolCalls(args = {}) {
                 break
             }
             case 'revise_datastore': {
-                const sql = String(input.sql || '').trim()
-                const reviseKey = `revise-${call?.id || 'active'}`
-                if (sql === '') {
-                    observation = observationError('revise_datastore', 'revise_datastore needs SQL.', {
-                        errorClass: ERROR_CLASSES.POLICY,
-                        artifacts: { sql: '' },
-                        hint: 'datastore_sql_required',
-                    })
-                    break
-                }
-                try {
-                    let survey = await surveyLabDatastore({ fresh: false })
-                    if (! survey.ready && survey.status === 'missing' && survey.oauth_ready) {
-                        onEvent?.({
-                            type: 'ui',
-                            datastoreRevision: {
-                                matchKey: reviseKey,
-                                status: 'waiting',
-                                statementCount: 0,
-                                destructive: false,
-                                summary: 'Waiting for Supabase…',
-                            },
-                        })
-                        await ensureDatastoreLinked(abortSignal)
-                    }
-                    const bundle = await reviseLabDatastore({
-                        sql,
-                        acknowledge_destructive: Boolean(input.acknowledge_destructive),
-                    })
-                    const statements = Array.isArray(bundle.statements) ? bundle.statements : []
-                    onEvent?.({
-                        type: 'ui',
-                        datastoreRevision: {
-                            matchKey: reviseKey,
-                            status: bundle.ok ? 'done' : 'error',
-                            statementCount: statements.length || Number(bundle.applied) || 0,
-                            destructive: Boolean(bundle.destructive),
-                            summary: bundle.message || '',
-                        },
-                    })
-                    observation = bundle.ok
-                        ? observationOk('revise_datastore', bundle.message || 'Revision applied.', {
-                            applied: Number(bundle.applied) || 0,
-                            destructive: Boolean(bundle.destructive),
-                            statements: statements.slice(0, 12),
-                        })
-                        : observationError('revise_datastore', bundle.message || 'Revision failed.', {
-                            errorClass: bundle.needs_ack ? ERROR_CLASSES.POLICY : 'Recoverable',
-                            artifacts: {
-                                needs_ack: Boolean(bundle.needs_ack),
-                                destructive: Boolean(bundle.destructive),
-                                statements: statements.slice(0, 12),
-                            },
-                            hint: bundle.needs_ack ? 'datastore_needs_ack' : 'datastore_revise_failed',
-                        })
-                } catch (error) {
-                    if (error?.code === 'ABORTED' || error?.name === 'AbortError') throw error
-                    if (isDatastoreSkip(error)) {
-                        onEvent?.({
-                            type: 'ui',
-                            datastoreRevision: {
-                                matchKey: reviseKey,
-                                status: 'skipped',
-                                statementCount: 0,
-                                destructive: false,
-                                summary: error?.code === 'cancelled'
-                                    ? 'Continued without a backend.'
-                                    : 'Supabase isn’t set up on this workspace.',
-                            },
-                        })
-                        observation = skippedDatastoreRevision(error)
-                        break
-                    }
-                    const payload = error?.payload && typeof error.payload === 'object' ? error.payload : {}
-                    onEvent?.({
-                        type: 'ui',
-                        datastoreRevision: {
-                            matchKey: reviseKey,
-                            status: 'error',
-                            statementCount: Array.isArray(payload.statements) ? payload.statements.length : 0,
-                            destructive: Boolean(payload.destructive),
-                            summary: payload.message || error?.message || 'Revision failed.',
-                        },
-                    })
-                    observation = observationError(
-                        'revise_datastore',
-                        payload.message || error?.message || 'Datastore revision failed.',
-                        {
-                            errorClass: payload.needs_ack ? ERROR_CLASSES.POLICY : 'Recoverable',
-                            artifacts: {
-                                needs_ack: Boolean(payload.needs_ack),
-                                destructive: Boolean(payload.destructive),
-                                statements: Array.isArray(payload.statements) ? payload.statements.slice(0, 12) : [],
-                            },
-                            hint: payload.needs_ack ? 'datastore_needs_ack' : 'datastore_revise_failed',
-                        },
-                    )
-                }
+                observation = observationError('revise_datastore', 'Raw SQL changes are disabled. Use a project-scoped schema proposal and owner Apply.', {
+                    errorClass: ERROR_CLASSES.POLICY,
+                    hint: 'schema_approval_required',
+                })
                 break
             }
             case 'write_file': {

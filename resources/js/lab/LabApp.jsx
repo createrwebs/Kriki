@@ -11,6 +11,7 @@ import { LabHeader } from './components/LabHeader'
 import { NewFileOverlay } from './components/NewFileOverlay'
 import { SaveTray, writeStoredAutoSave } from './components/SaveTray'
 import { PublishModal } from './components/PublishModal'
+import { HostingPanel } from './components/HostingPanel'
 import { UnsavedCloseModal } from './components/UnsavedCloseModal'
 import { CreditExhaustedNotice } from './components/CreditExhaustedNotice'
 import { LAB_CREDITS_EXHAUSTED } from './lib/labCredits'
@@ -67,6 +68,7 @@ export function LabApp({ initialProject = null, initialWorkspace = false } = {})
     const [githubDeskOpen, setGithubDeskOpen] = useState(false)
     const [githubDeskWait, setGithubDeskWait] = useState(false)
     const [githubNeedRemote, setGithubNeedRemote] = useState(false)
+    const [hostingOpen, setHostingOpen] = useState(false)
     const [datastoreOpen, setDatastoreOpen] = useState(() => {
         if (typeof window === 'undefined') return false
         return new URLSearchParams(window.location.search).get('datastore') === '1'
@@ -309,9 +311,11 @@ export function LabApp({ initialProject = null, initialWorkspace = false } = {})
         }
         window.addEventListener('krikkit-form-proposal', proposal)
         window.addEventListener('krikkit-form-files-installed', installed)
+        window.addEventListener('krikkit-module-files-installed', installed)
         return () => {
             window.removeEventListener('krikkit-form-proposal', proposal)
             window.removeEventListener('krikkit-form-files-installed', installed)
+            window.removeEventListener('krikkit-module-files-installed', installed)
         }
     }, [projectUuid, vfs.applyVfsBatch])
 
@@ -823,6 +827,7 @@ export function LabApp({ initialProject = null, initialWorkspace = false } = {})
                 onWorkspaceCommand={onWorkspaceCommand}
                 onPublish={publish.enabled ? () => publish.setOpen(true) : null}
                 publishStatus={publish.status}
+                onHosting={projectUuid ? () => setHostingOpen(true) : null}
             />
 
             <main className="flex min-h-0 flex-1 flex-row overflow-hidden">
@@ -965,6 +970,12 @@ export function LabApp({ initialProject = null, initialWorkspace = false } = {})
                 onContinuePublish={publish.continuePublish}
                 onVerify={publish.verify}
                 onUnpublish={publish.unpublish}
+            />
+
+            <HostingPanel
+                open={hostingOpen}
+                projectUuid={projectUuid}
+                onClose={() => setHostingOpen(false)}
             />
 
             <UnsavedCloseModal

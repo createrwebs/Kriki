@@ -69,6 +69,27 @@ Lab chat → intent → proposal → server preview/diff → owner Apply
 
 แบ่ง 3 ระดับ: platform operator กำหนดแพ็กเกจและ runtime allowlist; account owner จัดการโปรเจกต์/ร้านของตน; visitor/customer ใช้เฉพาะ public operation ที่โมดูลเปิด เว็บร้านไม่ใช่ back office ของ platform และไม่มีสิทธิ์เข้าตารางควบคุมของ Laravel
 
+### Module manifest ที่ agent และ UI อ่านร่วมกัน
+
+ตัวอย่างสัญญาเป้าหมาย ไม่ใช่ไฟล์ที่ลูกค้าอัปโหลดมาเพื่อให้สิทธิ์ตนเอง:
+
+```json
+{
+  "key": "manual_payments",
+  "version": 1,
+  "requires": ["catalog", "orders"],
+  "runtime": ["react-vite-static"],
+  "operations": ["settings.read", "settings.propose", "settings.apply", "slip.submit", "payment.review"],
+  "human_only": ["settings.apply", "payment.review"],
+  "data_scope": "project_module",
+  "readiness": "planned"
+}
+```
+
+`operations` เป็นรายชื่อที่ policy ต้องพิจารณาต่อ ไม่ได้เปิดให้ทุก actor ใช้ได้; `slip.submit` ต้อง scoped customer capability, `payment.review` ต้อง owner session. Module dependency/version/definition ของ installation ต้องตรวจฝั่ง server ก่อนสร้าง SDK config. SDK config ส่งเฉพาะ public identifiers/API origin ไม่ส่ง policy override หรือ secret
+
+การขอระบบอื่น เช่น ระบบซ่อมรถ: classify ก่อนว่าใช้ custom entities/forms ได้หรือไม่ ถ้าได้จึงเสนอ schema/pages/roles ตาม D1–D4; ถ้าต้องการ financial calculation, external integration หรือ privileged action ใหม่ ให้เสนอ module spec ใหม่ ห้ามให้ AI สร้าง unrestricted server plugin เพื่อข้ามความสามารถที่มี
+
 ### Control plane (MySQL ของ Krikkit)
 
 ตารางเสนอเพิ่มผ่าน migrations แยกย่อย:
@@ -127,7 +148,7 @@ Product catalog เป็น source of truth ฝั่ง server. Cart browser �
 
 Order states: awaiting_payment → payment_review → accepted/processing → completed; cancelled แยกจาก payment. Payment attempt: submitted → approved/rejected; ส่งใหม่สร้าง attempt ใหม่ ไม่ทับ/ลบประวัติ. `uploaded_at` จาก server, `claimed_transferred_at` จากลูกค้า, `verified_at/reviewer_id` จาก owner review; ไม่ใช้ชื่อ paid_at แทนเวลาอัปโหลด
 
-Customer order access: opaque capability256-bit, serverเก็บ hash, cookie HttpOnly Secure host-only บน API origin, SameSite ที่เหมาะกับ same-site verified origins; สำหรับ custom domain/cross-site ใช้ explicit token header จาก memory/sessionStorage พร้อม scope/expiry แทนหวังพึ่ง third-party cookies. Final mechanism เลือก header token อายุ24ชมใน commerce spec; refresh tab เก็บได้ใน sessionStorage, ไม่ใส่ URL/log/referrer, ไม่มี public recovery ด้วย email+order ID. เก็บ guest access secret ไม่เหมือนการพิสูจน์ตัวบุคคล
+Customer order access release แรก: opaque capability256-bit อายุ24ชม, serverเก็บ hashและorder/project scope, runtimeส่งผ่าน `X-Krikkit-Order-Token` header และเก็บใน sessionStorage ของร้านนั้นเพื่อ refresh tab ได้. ไม่ใช้ platform session/third-party cookie, ไม่ใส่ token ใน URL/log/referrer และไม่มี public recovery ด้วย email+order ID. Token เป็นสิทธิ์เฉพาะออเดอร์ ไม่ใช่การพิสูจน์ชื่อหรือบัญชีธนาคาร; หน้า checkout ต้องลด XSS และไม่มี third-party script ที่ไม่จำเป็น
 
 สลิป JPEG/PNG/WebP≤5MiB, inspect MIME/signature/decoded dimensions≤20MP, strip metadata/re-encode ถ้า decoderรองรับ; unsupported decoder failชัดเจน ไม่ยอมรับไฟล์เพราะนามสกุล. Object private, signed view5นาทีหลัง owner auth. Hash duplicate flag ภายในmerchant เดียว; ไม่อ้างตรวจสลิปปลอมได้. เก็บ attempts180วันเป็นค่าเสนอ ต้องให้เจ้าของยืนยัน retention/privacy policy ก่อน production; ไม่ลบ material data ใน local testอัตโนมัติ
 
@@ -139,9 +160,13 @@ UI ต้องแยก Import source / Link remote / Fork / Publish. Server in
 
 React Vite static เป็น supported matrix เริ่มต้น. Static export framework อื่นเป็น conditional หลังfixture buildผ่าน; Next SSR/API route, Python Reflex, Laravel/PHP backend, Docker-compose เป็น source-only/unsupported-runtime พร้อมคำอธิบาย ไม่แปลงชื่อเป็น Reactแล้วอ้างรันได้
 
-Limitsคงค่าเดิมเริ่มต้น25MiB archive/2500files/2MiBต่อfile; เพิ่ม expanded total100MiB/depth32/compression ratio100:1 และ拒 absolute/traversal/backslash/drive/UNC/symlink/submodule/git hooks/credential-bearing files. ตรวจ tree truncated/rate-limit และ never silent drop required source; preserve relevant license/NOTICE/lockfile (not execute) เพื่อreproducible build. LockfilesเดิมถูกskipในSiteWorkspace ต้องปรับด้วยfixture ไม่แก้กระจายโดยไม่ทดสอบ
+Limitsคงค่าเดิมเริ่มต้น25MiB archive/2500files/2MiBต่อfile; เพิ่ม expanded total100MiB/depth32/compression ratio100:1 และปฏิเสธ absolute/traversal/backslash/drive/UNC/symlink/submodule/git hooks/credential-bearing files. ตรวจ tree truncated/rate-limit และ never silent drop required source; preserve relevant license/NOTICE/lockfile (not execute) เพื่อreproducible build. LockfilesเดิมถูกskipในSiteWorkspace ต้องปรับด้วยfixture ไม่แก้กระจายโดยไม่ทดสอบ
 
 Imported codeไม่เข้าcontrol-plane source. Npm lifecycle scriptsปิดเริ่มต้น; dependency resolve/buildมี timeout/memory/network allowlistและแยกcontext; browser workerไม่ใช่sandboxสำหรับservercodeหรือสิทธิ์admin. Repo instructions/tool outputไม่ให้สิทธิ์ส่งข้อมูลออก, push, activate, SQL หรือเปิดnetwork
+
+### Publication compatibility และ rollback
+
+Artifact manifest เป้าหมายเก็บ source_revision, artifact_hash, runtime_kind, module UUID/version, required_schema_version และ SDK version. Publish ตรวจ installation ready และ required schema ก่อน promote; ไม่ส่ง runtime secrets ใน manifest. Buildสำเร็จแต่ moduleไม่พร้อมต้องแสดง blocked/setup-required ไม่เปลี่ยน active publication เงียบ ๆ. Undo code/เลือกartifactเก่าไม่rollback records/payment/schema; ต้องใช้ compatibility report ว่าartifactเก่าทำงานกับschemaปัจจุบันได้ มิฉะนั้นไม่อนุญาต rollback ไปหน้าที่เขียนข้อมูลผิดรุ่น
 
 ## 10. หน้าแรก / ความซื่อสัตย์ในการขาย
 

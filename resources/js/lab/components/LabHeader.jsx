@@ -18,6 +18,21 @@ function IconGlobe({ className = 'h-3.5 w-3.5' }) {
     )
 }
 
+function IconRocket({ className = 'h-3.5 w-3.5' }) {
+    return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path
+                d="M12 2.5c0 0-4.5 3-6 8.5 1.5 1 3 1.5 4.5 1.5L12 21l1.5-8.5c1.5 0 3-.5 4.5-1.5-1.5-5.5-6-8.5-6-8.5Z"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            />
+            <circle cx="12" cy="10" r="1.5" stroke="currentColor" strokeWidth="1.5" />
+        </svg>
+    )
+}
+
 export function LabHeader({
     building,
     railW,
@@ -36,6 +51,7 @@ export function LabHeader({
     onWorkspaceCommand = null,
     onPublish = null,
     publishStatus = 'idle',
+    onHosting = null,
 }) {
     return (
         <header className="lab-app-header flex h-14 shrink-0 items-stretch overflow-hidden border-b border-krikkit-line bg-krikkit-canvas">
@@ -79,7 +95,41 @@ export function LabHeader({
                         </span>
                     </>
                 )}
-                <div className="ml-auto flex h-5 shrink-0 items-center gap-3 pl-3">
+                <div className="ml-auto flex h-5 shrink-0 items-center gap-2.5 pl-3">
+                    {projectUuid ? (
+                        <button
+                            type="button"
+                            onClick={async () => {
+                                if (! window.confirm(`ต้องการลบโปรเจกต์ "${crumbTitle || projectUuid}" ออกจากระบบใช่หรือไม่? (คืนโควต้าโปรเจกต์ทันที)`)) {
+                                    return
+                                }
+                                try {
+                                    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                                    const res = await fetch(`/lab/builder/projects/${encodeURIComponent(projectUuid)}`, {
+                                        method: 'DELETE',
+                                        credentials: 'same-origin',
+                                        headers: {
+                                            Accept: 'application/json',
+                                            'X-Requested-With': 'XMLHttpRequest',
+                                            ...(token ? { 'X-CSRF-TOKEN': token } : {}),
+                                        },
+                                    })
+                                    if (res.ok) {
+                                        window.location.assign('/lab')
+                                    } else {
+                                        const data = await res.json().catch(() => ({}))
+                                        window.alert(data?.message || 'ลบโปรเจกต์ไม่สำเร็จ')
+                                    }
+                                } catch (err) {
+                                    window.alert(err?.message || 'ลบโปรเจกต์ไม่สำเร็จ')
+                                }
+                            }}
+                            className="inline-flex h-6 items-center gap-1 rounded-md border border-red-300 bg-red-50 px-2 text-[11px] font-medium text-red-700 transition hover:bg-red-100"
+                            title="ลบโปรเจกต์นี้"
+                        >
+                            🗑 ลบโปรเจกต์
+                        </button>
+                    ) : null}
                     <CreditBalanceBadge inProject={Boolean(projectUuid)} />
                     <ManualWorkspaceButton
                         visible={! building}
@@ -102,7 +152,7 @@ export function LabHeader({
                         onWorkspaceCommand={onWorkspaceCommand}
                     />
                     {projectUuid && onPublish ? (
-                        <div className="flex shrink-0 items-center pl-2">
+                        <div className="flex shrink-0 items-center gap-1.5 pl-2">
                             <button
                                 type="button"
                                 onClick={onPublish}
@@ -116,6 +166,16 @@ export function LabHeader({
                                     <span className="h-1.5 w-1.5 rounded-full bg-amber-500" aria-label="Publishing" />
                                 ) : null}
                             </button>
+                            {onHosting ? (
+                                <button
+                                    type="button"
+                                    onClick={onHosting}
+                                    className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-krikkit-line px-2.5 text-xs font-medium text-krikkit-muted transition hover:border-krikkit-fg/20 hover:text-krikkit-fg"
+                                >
+                                    <IconRocket className="h-3.5 w-3.5" />
+                                    Hosting
+                                </button>
+                            ) : null}
                         </div>
                     ) : null}
                 </div>

@@ -11,6 +11,7 @@ use App\Support\Site\SiteSettings;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class RegisteredUserController extends Controller
@@ -28,11 +29,17 @@ class RegisteredUserController extends Controller
 
         $memberRoleId = AccessRole::query()->where('slug', 'member')->value('id');
 
-        $user = User::create([
-            ...$request->validated(),
-            'access_role_id' => $memberRoleId,
-            'status' => UserStatus::Invited,
-        ]);
+        $user = DB::transaction(function () use ($request, $memberRoleId): User {
+            $user = User::create([
+                ...$request->authData(),
+                'access_role_id' => $memberRoleId,
+                'status' => UserStatus::Invited,
+            ]);
+
+            $user->businessProfile()->create($request->businessProfileData());
+
+            return $user;
+        });
 
         event(new Registered($user));
 

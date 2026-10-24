@@ -22,6 +22,9 @@
             <krikkit:field :label="__('dashboard.Copy')">
                 <krikkit:textarea rows="2" wire:model="agents.items.{{ $index }}.copy" />
             </krikkit:field>
+            <krikkit:field label="Prompt ตัวอย่าง (ไม่บังคับ)">
+                <krikkit:textarea rows="3" wire:model="agents.items.{{ $index }}.prompt" />
+            </krikkit:field>
         </div>
     @endforeach
     <krikkit:button type="button" variant="outline" size="sm" wire:click="addAgent">{{ __('dashboard.Add item') }}</krikkit:button>

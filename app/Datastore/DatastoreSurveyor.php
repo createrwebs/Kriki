@@ -71,7 +71,7 @@ final class DatastoreSurveyor
                 kind: $kind,
                 status: 'unreachable',
                 message: (string) ($shape['error'] ?? 'Data plane survey failed.'),
-                canRevise: (bool) $plane['can_revise'],
+                canRevise: false,
                 host: $plane['host_url'],
                 ref: $plane['project_ref'],
                 env: $this->clientEnv($plane),
@@ -83,9 +83,7 @@ final class DatastoreSurveyor
         /** @var list<array{name: string, columns: list<array{name: string, type: string, nullable: bool}>}> $tables */
         $tables = is_array($shape['tables'] ?? null) ? $shape['tables'] : [];
         $count = count($tables);
-        $reviseHint = $plane['can_revise']
-            ? 'Schema revisions can be applied with revise_datastore.'
-            : 'Preview auth is ready. Reconnect Supabase from the Lab + menu to apply SQL.';
+        $reviseHint = 'Raw SQL changes are disabled. Schema changes require a project-scoped proposal and the owner Apply action.';
 
         return [
             'ready' => true,
@@ -93,7 +91,7 @@ final class DatastoreSurveyor
             'status' => 'ready',
             'host' => $plane['host_url'],
             'project_ref' => $plane['project_ref'],
-            'can_revise' => (bool) $plane['can_revise'],
+            'can_revise' => false,
             'oauth_ready' => true,
             'linked' => true,
             'client_env' => $this->clientEnv($plane),

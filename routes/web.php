@@ -63,6 +63,20 @@ Route::get('/', function (SiteSettings $site, PageSeo $seo) {
     return view('home.home');
 })->name('home');
 
+// Public product view, including for signed-in users whose home remains Studio.
+Route::get('/features', function (SiteSettings $site, PageSeo $seo) {
+    if ($site->maintenance() && auth()->guest()) {
+        $seo->page(['title' => __('messages.Unavailable'), 'index' => false, 'follow' => false]);
+        return response()->view('maintenance.maintenance', ['site' => $site], 503);
+    }
+    $seo->page([
+        'title' => 'สร้างเว็บไซต์ด้วย AI',
+        'description' => 'เริ่มจากไอเดียภาษาไทย เลือกตัวอย่าง ปรับหน้าเว็บ และตรวจความสามารถก่อนนำไปใช้งาน',
+        'canonical' => route('features'),
+    ]);
+    return view('home.home');
+})->name('features');
+
 Route::get('/projects', ProjectsComponent::class)
     ->middleware('auth')
     ->name('projects');
@@ -117,7 +131,9 @@ Route::get('/lab/oauth/supabase/return', [LabSupabaseOAuthController::class, 're
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/lab', LabController::class)->name('lab');
+    require __DIR__.'/lab-builder.php';
     require __DIR__.'/lab-forms.php';
+    require __DIR__.'/lab-modules.php';
     Route::get('/lab/models', LabModelsController::class)->name('lab.models');
     Route::post('/lab/chat', LabChatController::class)->middleware('throttle:30,1')->name('lab.chat');
     Route::post('/lab/visuals', LabVisualsController::class)->middleware('throttle:30,1')->name('lab.visuals');

@@ -1,0 +1,5 @@
+simulation: managed-modules
+routing: path
+mocks:
+  - routeKey: supabase
+    path: ../mocks/supabase-managed/config.yaml

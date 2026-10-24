@@ -9,7 +9,9 @@ const LINK_TO = /\bto=["']([^"'#]+)["']/g
 const SOURCE_FILE = /\.(jsx?|tsx?|vue)$/i
 
 export function normalizeGuestRoute(path) {
-    const raw = String(path || '').split('?')[0].split('#')[0].trim()
+    let raw = String(path || '').split('?')[0].split('#')[0].trim()
+    // Browser location paths encode Thai/Unicode; preserve encoded URI separators.
+    try { raw = decodeURI(raw) } catch { /* Incomplete escapes remain unmatched. */ }
     if (! raw || raw === '/') return '/'
     const next = raw.startsWith('/') ? raw : `/${raw}`
     return next.length > 1 && next.endsWith('/') ? next.slice(0, -1) : next
@@ -34,6 +36,18 @@ export function discoverGuestRoutes(contents = {}) {
     }
 
     for (const [file, body] of Object.entries(contents || {})) {
+        // Structured builder routes live in the same public page data as its renderer.
+        if (String(file).replace(/^\/+/, '') === 'src/krikkit-site/site.json') {
+            try {
+                const site = JSON.parse(String(body))
+                if (Array.isArray(site?.pages)) {
+                    for (const page of site.pages.slice(0, 5)) {
+                        if (typeof page?.route === 'string' && page.route.startsWith('/')
+                            && !page.route.startsWith('//') && !/[?#:*]/.test(page.route)) addRoute(page.route)
+                    }
+                }
+            } catch { /* Incomplete JSON while editing has no discoverable routes. */ }
+        }
         const page = String(file || '').match(PAGE_FILE)
         if (page) {
             const name = page[1].replace(/\/index$/i, '')

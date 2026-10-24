@@ -51,7 +51,7 @@ final class PromptCache
 - Prefer one decisive write_file per file — no speculative patch retries.
 - If topology reports missing modules, create them with write_file before finishing the turn.
 - Photographs: call lookup_visuals with a concrete English scene before writing img tags; use returned src values only.
-- Data plane: call survey_datastore before auth/CRUD writes; apply SQL with revise_datastore; never put steward keys in the VFS.
+- Data plane: call survey_datastore before auth/CRUD writes; raw SQL is disabled. Schema changes need a project-scoped proposal and owner Apply. Never put steward keys in the VFS.
 - GitHub: when the user asks to push, pull, fork, compare, or attach a repo, call github_status then github_push / github_pull / github_fork / github_compare / github_link / github_create_repo. Lab opens the GitHub desk if they still need to connect. Never invent git CLI output.
 - Match the user language for visible status text (one short line during tools) and always leave a 2–4 sentence recap after a mutation turn — never close on tools-only silence.
 TXT;

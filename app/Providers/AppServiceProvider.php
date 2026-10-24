@@ -66,6 +66,9 @@ class AppServiceProvider extends ServiceProvider
                 Limit::perMinute(100)->by('form-total|'.$formId),
             ];
         });
+        RateLimiter::for('lab-widget-submissions', function (Request $request) {
+            return [Limit::perMinute(10)->by('widget-ip|'.$request->segment(3).'|'.$request->ip()), Limit::perMinute(100)->by('widget-total|'.$request->segment(3))];
+        });
 
         foreach (AbilityRegistry::codes() as $code) {
             Gate::define($code, fn (?User $user) => $user?->allows($code) ?? false);

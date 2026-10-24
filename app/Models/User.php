@@ -93,6 +93,11 @@ class User extends Authenticatable implements MustVerifyEmailContract
         return $this->hasOne(UserEntitlement::class);
     }
 
+    public function businessProfile(): HasOne
+    {
+        return $this->hasOne(UserBusinessProfile::class);
+    }
+
     public function labProjects(): HasMany
     {
         return $this->hasMany(LabProject::class);

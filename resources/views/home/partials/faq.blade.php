@@ -16,6 +16,8 @@
                     <li>
                         <button
                             type="button"
+                            aria-controls="sales-faq-{{ $index }}"
+                            :aria-expanded="(faq === {{ $index }}).toString()"
                             class="flex w-full items-center justify-between gap-4 px-0 py-5 text-left text-sm font-medium text-krikkit-fg-soft transition hover:text-krikkit-fg sm:py-6 sm:text-[15px]"
                             x-on:click="faq = faq === {{ $index }} ? -1 : {{ $index }}"
                             :class="faq === {{ $index }} ? 'text-krikkit-fg' : ''"
@@ -26,7 +28,7 @@
                                 <span x-cloak x-show="faq === {{ $index }}"><krikkit:icon name="minus" class="size-5" /></span>
                             </span>
                         </button>
-                        <p x-cloak x-show="faq === {{ $index }}" class="pb-5 text-sm leading-relaxed text-krikkit-muted">{{ $item['a'] }}</p>
+                        <p id="sales-faq-{{ $index }}" x-cloak x-show="faq === {{ $index }}" class="pb-5 text-sm leading-relaxed text-krikkit-muted">{{ $item['a'] }}</p>
                     </li>
                 @endforeach
             </ul>

@@ -96,7 +96,7 @@ class LabDatastoreController extends Controller
             user: $request->user(),
         );
 
-        $status = $payload['ok'] ? 200 : (($payload['needs_ack'] ?? false) ? 409 : 422);
+        $status = ($payload['code'] ?? null) === 'schema_approval_required' ? 403 : ($payload['ok'] ? 200 : 422);
 
         return response()->json($payload, $status);
     }

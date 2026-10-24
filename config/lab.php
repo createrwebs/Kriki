@@ -2,6 +2,12 @@
 
 return [
 
+    'runtime' => [
+        // Separate registrable domain; never a subdomain of the platform host.
+        // Local development uses per-session *.runtime.localhost.
+        'guest_domain' => env('LAB_RUNTIME_GUEST_DOMAIN', ''),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | GitHub import

@@ -21,7 +21,6 @@ final class PseudoToolCallParser
         'write_file',
         'lookup_visuals',
         'survey_datastore',
-        'revise_datastore',
         'github_status',
         'github_compare',
         'github_push',

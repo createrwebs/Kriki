@@ -15,7 +15,7 @@ const PLUS_MENU = [
     { id: 'recently-opened', label: 'Recently opened', shortcut: `${MOD}E`, icon: 'history', group: 'file' },
     { id: 'supabase', label: 'Supabase', shortcut: '', icon: 'datastore', group: 'connect' },
     { id: 'forms', label: 'Forms', shortcut: '', icon: 'new-file', group: 'connect' },
-    { id: 'modules', label: 'Database widgets', shortcut: '', icon: 'datastore', group: 'connect' },
+    { id: 'modules', label: 'หลังบ้าน (สินค้า · ข่าว · สลิปเงิน · PromptPay)', shortcut: '', icon: 'datastore', group: 'connect' },
     { id: 'app-settings', label: 'App settings', shortcut: `${MOD},`, icon: 'settings', group: 'prefs' },
 ]
 
@@ -427,7 +427,7 @@ export function WorkspaceTabs({
 
         switch (itemId) {
             case 'modules':
-                openTab('Database widgets', 'teal', 'modules')
+                openTab('หลังบ้าน (Admin)', 'teal', 'modules', { unique: true })
                 break
             case 'forms':
                 openTab('Forms', 'teal', 'forms')
@@ -556,6 +556,26 @@ export function WorkspaceTabs({
                 Preview
                 {previewOn ? (
                     <span className="absolute inset-x-2 bottom-0 h-px bg-krikkit-fg" aria-hidden />
+                ) : null}
+            </button>
+
+            <button
+                type="button"
+                onClick={() => {
+                    setPreviewOn(false)
+                    openTab('หลังบ้าน (Admin)', 'teal', 'modules', { unique: true })
+                }}
+                className={[
+                    'relative inline-flex h-8 shrink-0 items-center gap-1.5 px-2.5 text-xs font-medium transition',
+                    ! previewOn && tabs.find((t) => t.id === activeId)?.panel === 'modules'
+                        ? 'text-teal-600 font-semibold'
+                        : 'text-krikkit-muted hover:text-krikkit-fg',
+                ].join(' ')}
+                title="เปิดหลังบ้านสำหรับจัดการสินค้า ข่าวสาร ตรวจสอบสลิป และตั้งค่า PromptPay"
+            >
+                🏢 หลังบ้าน (Admin)
+                {! previewOn && tabs.find((t) => t.id === activeId)?.panel === 'modules' ? (
+                    <span className="absolute inset-x-2 bottom-0 h-px bg-teal-600" aria-hidden />
                 ) : null}
             </button>
 

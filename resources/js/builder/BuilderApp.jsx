@@ -186,7 +186,21 @@ export function BuilderApp({ bootstrap }) {
         });
     const params = new URLSearchParams(window.location.search);
     const query = params.get("draft");
-    if (query && !isUuid(query))
+    const projectQuery = params.get("project");
+    if (projectQuery && isUuid(projectQuery) && storageReady) {
+      fetch(`/lab/builder/project-draft/${encodeURIComponent(projectQuery)}`, {
+        credentials: "same-origin",
+        headers: { Accept: "application/json" },
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          if (active && data?.draft_uuid) {
+            loadDraft(data.draft_uuid, true);
+            setCreatedProject({ uuid: projectQuery, revision: data.draft_revision });
+          }
+        })
+        .catch(() => {});
+    } else if (query && !isUuid(query))
       setError(
         new Error("The draft link is invalid. Choose a saved draft below."),
       );

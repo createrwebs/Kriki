@@ -12,6 +12,7 @@ Route::post('/lab/builder/ai-edit', [WebsiteBuilderAiController::class, 'edit'])
 Route::post('/lab/builder/upload-image', [WebsiteBuilderAiController::class, 'uploadImage'])->middleware('throttle:30,1,builder-write')->name('lab.builder.upload-image');
 Route::get('/lab/builder/projects', [WebsiteBuilderAiController::class, 'listProjects'])->middleware('throttle:120,1,builder-read')->name('lab.builder.projects.index');
 Route::delete('/lab/builder/projects/{uuid}', [WebsiteBuilderAiController::class, 'destroyProject'])->whereUuid('uuid')->middleware('throttle:30,1,builder-write')->name('lab.builder.projects.destroy');
+Route::get('/lab/builder/project-draft/{uuid}', [WebsiteBuilderAiController::class, 'findDraftForProject'])->whereUuid('uuid')->middleware('throttle:120,1,builder-read')->name('lab.builder.projects.draft');
 Route::get('/lab/builder/drafts', [WebsiteDraftController::class, 'index'])->middleware('throttle:120,1,builder-read')->name('lab.builder.drafts.index');
 Route::post('/lab/builder/drafts', [WebsiteDraftController::class, 'store'])->middleware('throttle:30,1,builder-write')->name('lab.builder.drafts.store');
 Route::get('/lab/builder/drafts/{uuid}', [WebsiteDraftController::class, 'show'])->whereUuid('uuid')->middleware('throttle:120,1,builder-read')->name('lab.builder.drafts.show');

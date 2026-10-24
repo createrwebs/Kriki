@@ -198,6 +198,29 @@ final class WebsiteBuilderAiController extends Controller
         ])->header('Cache-Control', 'private, no-store');
     }
 
+    public function findDraftForProject(Request $request, string $uuid): JsonResponse
+    {
+        $project = \App\Models\LabProject::where('user_id', $request->user()->id)
+            ->where('uuid', strtolower($uuid))
+            ->firstOrFail();
+
+        $binding = null;
+        if (\Illuminate\Support\Facades\Schema::hasTable('website_draft_projects') && \Illuminate\Support\Facades\Schema::hasTable('website_drafts')) {
+            $binding = \Illuminate\Support\Facades\DB::table('website_draft_projects')
+                ->join('website_drafts', 'website_drafts.id', '=', 'website_draft_projects.website_draft_id')
+                ->where('website_draft_projects.lab_project_id', $project->id)
+                ->select('website_drafts.uuid', 'website_drafts.revision')
+                ->first();
+        }
+
+        return response()->json([
+            'found' => (bool) $binding,
+            'draft_uuid' => $binding?->uuid,
+            'draft_revision' => $binding?->revision,
+            'project_uuid' => $project->uuid,
+        ])->header('Cache-Control', 'private, no-store');
+    }
+
     private function callLlm(
         string $prompt,
         string $scope,

@@ -10,6 +10,8 @@ let source = await readFile('resources/js/lab/widget-runtime/app-wrapper.jsx','u
 source = source.replace("from 'react'", `from ${JSON.stringify(reactUrl)}`)
     .replace("import SiteContent from './SiteContent.jsx'", 'const SiteContent = () => React.createElement("main",null,"Site content")')
     .replace("import ContactForm from './krikkit-widgets/ContactForm.jsx'", 'const ContactForm = props => React.createElement("form", {"data-module":props.moduleUuid})')
+    .replace("import NewsFeed from './krikkit-widgets/NewsFeed.jsx'", 'const NewsFeed = () => null')
+    .replace("import StorefrontWidget from './krikkit-widgets/StorefrontWidget.jsx'", 'const StorefrontWidget = () => null')
     .replace("import config from './krikkit-widgets/config.json'", 'const config = {apiOrigin:"https://api.example.invalid",widgets:[{key:"contact",moduleUuid:"home",route:"/"},{key:"contact",moduleUuid:"other",route:"/other"}]}')
     .replace("import './krikkit-widgets/widgets.css'", '')
 await writeFile(fixture, (await transform(source,{loader:'jsx',format:'esm'})).code)

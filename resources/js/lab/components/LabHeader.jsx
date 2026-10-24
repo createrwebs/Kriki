@@ -151,21 +151,38 @@ export function LabHeader({
                         onRequestCloseTab={onRequestCloseTab}
                         onWorkspaceCommand={onWorkspaceCommand}
                     />
-                    {projectUuid && onPublish ? (
+                    {projectUuid ? (
                         <div className="flex shrink-0 items-center gap-1.5 pl-2">
+                            <a
+                                href={`/lab/builder?project=${encodeURIComponent(projectUuid)}`}
+                                className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-krikkit-line bg-krikkit-surface px-2.5 text-xs font-medium text-krikkit-fg transition hover:border-krikkit-accent hover:text-krikkit-accent"
+                                title="เปิดแก้ไขหน้าเว็บและ Section ใน Pre-Build Studio"
+                            >
+                                ✏️ แก้ไขหน้าเว็บ
+                            </a>
                             <button
                                 type="button"
-                                onClick={onPublish}
-                                className={`inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium ${LAB_BTN_PRIMARY}`}
+                                onClick={() => onPanelChange?.({ panel: 'modules', tabId: null })}
+                                className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-teal-300 bg-teal-50 px-2.5 text-xs font-medium text-teal-800 transition hover:bg-teal-100"
+                                title="เปิดระบบหลังบ้านสำหรับจัดการสินค้า ข่าวสาร ตรวจสอบสลิป และตั้งค่า PromptPay"
                             >
-                                <IconGlobe className="h-3.5 w-3.5" />
-                                Publish
-                                {publishStatus === 'live' ? (
-                                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-label="Live" />
-                                ) : publishStatus === 'building' ? (
-                                    <span className="h-1.5 w-1.5 rounded-full bg-amber-500" aria-label="Publishing" />
-                                ) : null}
+                                🏢 หลังบ้าน
                             </button>
+                            {onPublish ? (
+                                <button
+                                    type="button"
+                                    onClick={onPublish}
+                                    className={`inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium ${LAB_BTN_PRIMARY}`}
+                                >
+                                    <IconGlobe className="h-3.5 w-3.5" />
+                                    Publish
+                                    {publishStatus === 'live' ? (
+                                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-label="Live" />
+                                    ) : publishStatus === 'building' ? (
+                                        <span className="h-1.5 w-1.5 rounded-full bg-amber-500" aria-label="Publishing" />
+                                    ) : null}
+                                </button>
+                            ) : null}
                             {onHosting ? (
                                 <button
                                     type="button"

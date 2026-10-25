@@ -3,7 +3,9 @@
 namespace App\Lab;
 
 use App\Lab\Github\LabGithubImportLimits;
+use App\Lab\Github\GithubImportContentPolicy;
 use App\Models\LabProject;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
@@ -16,6 +18,25 @@ use Throwable;
  */
 final class SiteWorkspace
 {
+    private static array $writeLocks = [];
+
+    public function withWriteLock(LabProject $project, callable $operation): mixed
+    {
+        $folder = storage_path('app/lab/workspace-locks');
+        $key = $folder.'/'.$project->uuid;
+        if (isset(self::$writeLocks[$key])) return $operation();
+        File::ensureDirectoryExists($folder);
+        $lock = fopen($folder.'/'.$project->uuid.'.lock', 'c');
+        if ($lock === false || !flock($lock, LOCK_EX)) throw new RuntimeException('Could not lock workspace.');
+        self::$writeLocks[$key] = true;
+        try { return $operation(); }
+        finally { unset(self::$writeLocks[$key]); flock($lock, LOCK_UN); fclose($lock); }
+    }
+
+    private function assertOrdinaryWritable(string $path): void
+    {
+        if (str_starts_with(strtolower($path), 'src/krikkit-widgets/')) throw new InvalidArgumentException('Managed widget files must be updated through the reviewed module installer.');
+    }
     public const KIT_VERSION = 3;
 
     public const STACK = 'react-vite-tailwind';
@@ -49,18 +70,6 @@ final class SiteWorkspace
         'cover.jpg',
         'cover.jpeg',
         'cover.png',
-    ];
-
-    /** Lockfiles / install manifests — skip on import (inflate file counts, useless in Lab). */
-    private const SKIP_IMPORT_BASENAMES = [
-        'pnpm-lock.yaml',
-        'package-lock.json',
-        'yarn.lock',
-        'bun.lock',
-        'bun.lockb',
-        'npm-shrinkwrap.json',
-        'composer.lock',
-        'Cargo.lock',
     ];
 
     public function kitPath(): string
@@ -143,34 +152,57 @@ final class SiteWorkspace
         return $root;
     }
 
-    /**
-     * Wipe the workspace and leave only the Lab marker — used before GitHub import
-     * so the seed kit (`Your site starts here`) does not shadow imported apps.
-     */
-    public function resetForImport(LabProject $project): string
+    /** Content snapshot used to detect edits made while an import is fetching. */
+    public function importRevision(LabProject $project): string
     {
         $root = $this->root($project);
-
-        File::ensureDirectoryExists(dirname($root));
-
-        if (is_dir($root)) {
-            File::deleteDirectory($root);
+        if (is_link($root)) throw new InvalidArgumentException('Workspace root is a symbolic link.');
+        if (!is_dir($root)) return hash('sha256', 'missing');
+        $hashes = [];
+        foreach (Finder::create()->in($root)->ignoreDotFiles(false)->ignoreVCS(false) as $entry) {
+            if ($entry->isLink()) throw new InvalidArgumentException('Workspace contains a symbolic link.');
+            if ($entry->isFile()) $hashes[str_replace('\\', '/', $entry->getRelativePathname())] = hash_file('sha256', $entry->getPathname());
         }
+        ksort($hashes);
+        return hash('sha256', json_encode($hashes, JSON_THROW_ON_ERROR));
+    }
 
-        File::ensureDirectoryExists($root);
-        File::put($root.'/.krikkit-kit', json_encode([
-            'version' => self::KIT_VERSION,
-            'stack' => self::STACK,
-            'origin' => 'github-import',
-        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)."\n");
-
-        $project->forceFill([
-            'kit_version' => self::KIT_VERSION,
-            'stack' => self::STACK,
-            'workspace_status' => 'ready',
-        ])->save();
-
-        return $root;
+    private function stageImport(LabProject $project, callable $write, ?string $expectedRevision, bool $replace, ?callable $beforePromotion): array
+    {
+        $expectedRevision ??= $this->importRevision($project);
+        return $this->withWriteLock($project, function () use ($project, $write, $expectedRevision, $replace, $beforePromotion) {
+            abort_unless($this->importRevision($project) === $expectedRevision, 409, 'Workspace changed while importing. Review the source before trying again.');
+            $root = $this->root($project);
+            $stage = $root.'.import-'.bin2hex(random_bytes(8));
+            $backup = $root.'.previous-'.bin2hex(random_bytes(8));
+            $attributes = $project->getAttributes();
+            $promoted = false; $completed = false;
+            try {
+                File::ensureDirectoryExists($stage);
+                if (!$replace && is_dir($root) && !File::copyDirectory($root, $stage)) throw new RuntimeException('Could not stage the existing workspace.');
+                $result = $write($stage);
+                $this->ensureFumadocsStubAt($stage);
+                if (File::put($stage.'/.krikkit-kit', json_encode(['version'=>self::KIT_VERSION, 'stack'=>self::STACK, 'origin'=>'github-import'], JSON_THROW_ON_ERROR)."\n") === false) throw new RuntimeException('Could not stage import metadata.');
+                abort_unless($this->importRevision($project) === $expectedRevision, 409, 'Workspace changed while staging the import. Review the source before trying again.');
+                DB::transaction(function () use ($project, $root, $stage, $backup, &$promoted, $beforePromotion) {
+                    if ($beforePromotion !== null) $beforePromotion();
+                    if (is_dir($root) && !rename($root, $backup)) throw new RuntimeException('Could not preserve the previous workspace.');
+                    if (!rename($stage, $root)) throw new RuntimeException('Could not promote imported source.');
+                    $promoted = true;
+                    if (!$project->forceFill(['kit_version'=>self::KIT_VERSION, 'stack'=>self::STACK, 'workspace_status'=>'ready'])->save()) throw new RuntimeException('Could not save import metadata.');
+                });
+                $completed = true;
+                return $result;
+            } catch (Throwable $error) {
+                $project->setRawAttributes($attributes, true);
+                if ($promoted && is_dir($root) && !File::deleteDirectory($root)) throw new RuntimeException('Could not restore workspace; previous source retained at '.$backup, previous: $error);
+                if (is_dir($backup) && !rename($backup, $root)) throw new RuntimeException('Could not restore workspace; previous source retained at '.$backup, previous: $error);
+                throw $error;
+            } finally {
+                if (is_dir($stage)) File::deleteDirectory($stage);
+                if ($completed && is_dir($backup)) File::deleteDirectory($backup);
+            }
+        });
     }
 
     /**
@@ -272,17 +304,7 @@ final class SiteWorkspace
 
     public function write(LabProject $project, string $relative, string $body): void
     {
-        $relative = $this->normalizeRelative($relative);
-
-        if (! $this->isWritableRelative($relative)) {
-            throw new InvalidArgumentException('Path is not writable.');
-        }
-
-        $root = $this->ensure($project);
-        $absolute = $this->joinUnderRoot($root, $relative);
-
-        File::ensureDirectoryExists(dirname($absolute));
-        File::put($absolute, $body);
+        $this->commitAtomic($project, [$relative => $body]);
     }
 
     /**
@@ -291,7 +313,22 @@ final class SiteWorkspace
      * @param  array<string, string>  $files  relative path → content
      * @return list<string> committed paths
      */
-    public function commitAtomic(LabProject $project, array $files): array
+    public function commitAtomic(LabProject $project, array $files, array $expectedHashes = [], bool $managed = false): array
+    {
+        return $this->withWriteLock($project, function () use ($project, $files, $expectedHashes, $managed) {
+            $root = $this->ensure($project);
+            foreach ($expectedHashes as $path => $hash) {
+                $path = $this->normalizeRelative($path);
+                $absolute = $this->joinUnderRoot($root, $path);
+                $actual = is_file($absolute) ? hash_file('sha256', $absolute) : null;
+                abort_unless($actual === $hash, 409, 'Workspace files changed. Review the module update again.');
+            }
+            if (!$managed) foreach (array_keys($files) as $path) $this->assertOrdinaryWritable($this->normalizeRelative($path));
+            return $this->commitFiles($project, $files);
+        });
+    }
+
+    private function commitFiles(LabProject $project, array $files): array
     {
         if ($files === []) {
             return [];
@@ -392,6 +429,16 @@ final class SiteWorkspace
 
     public function delete(LabProject $project, string $relative): void
     {
+        $this->withWriteLock($project, function () use ($project, $relative) {
+            $path = $this->normalizeRelative($relative);
+            $this->assertOrdinaryWritable($path.'/');
+            if (in_array(strtolower($path), ['src','src/krikkit-widgets'], true) && is_dir($this->root($project).'/src/krikkit-widgets')) throw new InvalidArgumentException('Cannot remove installed managed widget files.');
+            $this->deletePath($project, $relative);
+        });
+    }
+
+    private function deletePath(LabProject $project, string $relative): void
+    {
         $relative = $this->normalizeRelative($relative);
 
         if ($relative === '' || $relative === '.') {
@@ -447,7 +494,12 @@ final class SiteWorkspace
      *
      * @return array{paths: list<string>, skipped: int}
      */
-    public function importTree(LabProject $project, string $sourceDir): array
+    public function importTree(LabProject $project, string $sourceDir, ?string $expectedRevision = null, bool $replace = false, ?callable $beforePromotion = null): array
+    {
+        return $this->stageImport($project, fn (string $root) => $this->writeImportTree($project, $sourceDir, $root), $expectedRevision, $replace, $beforePromotion);
+    }
+
+    private function writeImportTree(LabProject $project, string $sourceDir, string $root): array
     {
         $started = microtime(true);
         $sourceReal = realpath($sourceDir);
@@ -456,7 +508,6 @@ final class SiteWorkspace
             throw new InvalidArgumentException('Import source directory is missing.');
         }
 
-        $root = $this->ensure($project);
         $maxFiles = LabGithubImportLimits::maxFiles();
         $maxFileBytes = (int) config('lab.github.max_file_bytes', 2 * 1024 * 1024);
 
@@ -510,7 +561,11 @@ final class SiteWorkspace
 
             $absolute = $this->joinUnderRoot($root, $relative);
             File::ensureDirectoryExists(dirname($absolute));
-            File::copy($file->getPathname(), $absolute);
+            if ($file->isLink()) throw new InvalidArgumentException('Import contains a symbolic link.');
+            $body = file_get_contents($file->getPathname(), false, null, 0, $maxFileBytes + 1);
+            if ($body === false || strlen($body) > $maxFileBytes) throw new InvalidArgumentException('Source file changed or exceeds the import limit.');
+            GithubImportContentPolicy::assertSafe($relative, $body);
+            if (File::put($absolute, $body) !== strlen($body)) throw new RuntimeException('Could not stage imported source.');
             $paths[] = $relative;
         }
 
@@ -550,10 +605,14 @@ final class SiteWorkspace
      * @param  array<string, string>  $files
      * @return array{paths: list<string>, skipped: int}
      */
-    public function importFileMap(LabProject $project, array $files): array
+    public function importFileMap(LabProject $project, array $files, ?string $expectedRevision = null, bool $replace = false, ?callable $beforePromotion = null): array
+    {
+        return $this->stageImport($project, fn (string $root) => $this->writeImportFileMap($project, $files, $root), $expectedRevision, $replace, $beforePromotion);
+    }
+
+    private function writeImportFileMap(LabProject $project, array $files, string $root): array
     {
         $started = microtime(true);
-        $root = $this->ensure($project);
         $maxFiles = LabGithubImportLimits::maxFiles();
         $maxFileBytes = (int) config('lab.github.max_file_bytes', 2 * 1024 * 1024);
 
@@ -591,9 +650,10 @@ final class SiteWorkspace
                 throw new InvalidArgumentException(__('dashboard.Repository has too many files to import. Raise the max file count under API Integration → GitHub, or set Root directory (e.g. apps/www).'));
             }
 
+            GithubImportContentPolicy::assertSafe($relative, $body);
             $absolute = $this->joinUnderRoot($root, $relative);
             File::ensureDirectoryExists(dirname($absolute));
-            File::put($absolute, $body);
+            if (File::put($absolute, $body) !== strlen($body)) throw new RuntimeException('Could not stage imported source.');
             $paths[] = $relative;
         }
 
@@ -629,7 +689,11 @@ final class SiteWorkspace
      */
     public function ensureFumadocsSourceStub(LabProject $project): void
     {
-        $root = $this->ensure($project);
+        $this->ensureFumadocsStubAt($this->ensure($project));
+    }
+
+    private function ensureFumadocsStubAt(string $root): void
+    {
         $marker = $root.DIRECTORY_SEPARATOR.'.source'.DIRECTORY_SEPARATOR.'index.ts';
         if (is_file($marker) || is_file($root.DIRECTORY_SEPARATOR.'.source.ts')) {
             return;
@@ -747,11 +811,6 @@ TS);
         $relative = $this->normalizeRelative($relative);
 
         if ($relative === '' || $relative === '.krikkit-kit') {
-            return false;
-        }
-
-        $base = basename($relative);
-        if (in_array($base, self::SKIP_IMPORT_BASENAMES, true)) {
             return false;
         }
 
@@ -981,6 +1040,11 @@ TS);
 
             if ($part === '..') {
                 throw new InvalidArgumentException('Path escapes the workspace.');
+            }
+
+            if (preg_match('/[<>:"|?*\x00-\x1f]|[. ]$/', $part)
+                || preg_match('/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|$)/i', $part)) {
+                throw new InvalidArgumentException('Path contains an unsafe filesystem name.');
             }
 
             $parts[] = $part;

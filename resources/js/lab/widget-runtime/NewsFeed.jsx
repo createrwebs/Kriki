@@ -50,9 +50,9 @@ export default function NewsFeed({ apiOrigin, moduleUuid }) {
         ) : !items || items.length === 0 ? (
             <p>ยังไม่มีข่าวประชาสัมพันธ์ในขณะนี้</p>
         ) : (
-            <div className="kw-news-list" style={{ display: 'grid', gap: 16 }}>
+            <div className="kw-news-list">
                 {items.map(item => (
-                    <article key={item.uuid} style={{ borderTop: '1px solid #eee', paddingTop: 12 }}>
+                    <article key={item.uuid}>
                         <h3 style={{ margin: '0 0 6px' }}>{item.title}</h3>
                         {item.published_at ? <p style={{ margin: '0 0 6px', fontSize: '0.85em', opacity: 0.75 }}>{new Date(item.published_at).toLocaleString('th-TH')}</p> : null}
                         {item.excerpt ? <p style={{ margin: '0 0 10px' }}>{item.excerpt}</p> : null}

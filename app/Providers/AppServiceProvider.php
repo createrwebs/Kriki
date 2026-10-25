@@ -69,6 +69,13 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('lab-widget-submissions', function (Request $request) {
             return [Limit::perMinute(10)->by('widget-ip|'.$request->segment(3).'|'.$request->ip()), Limit::perMinute(100)->by('widget-total|'.$request->segment(3))];
         });
+        RateLimiter::for('lab-widget-quotes', function (Request $request) {
+            return [Limit::perMinute(10)->by('quote-ip|'.$request->segment(3).'|'.$request->ip()), Limit::perMinute(100)->by('quote-total|'.$request->segment(3))];
+        });
+        RateLimiter::for('lab-widget-slips', function (Request $request) {
+            $module = $request->segment(3); $order = $request->segment(5);
+            return [Limit::perMinute(5)->by('slip-minute|'.$module.'|'.$order), Limit::perHour(20)->by('slip-hour|'.$module.'|'.$order), Limit::perHour(100)->by('slip-module|'.$module)];
+        });
 
         foreach (AbilityRegistry::codes() as $code) {
             Gate::define($code, fn (?User $user) => $user?->allows($code) ?? false);

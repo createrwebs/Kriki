@@ -17,6 +17,12 @@ use Illuminate\Support\Facades\Validator;
 
 final class LabModuleController extends Controller
 {
+    public function buildContext(Request $request, LabProject $project, \App\Lab\Modules\ModuleArtifact $artifacts): JsonResponse
+    {
+        \App\Lab\LabProjectAccess::assertOwner($project, $request->user());
+        abort_unless($request->query() === [], 422);
+        return $this->respond(['context' => $artifacts->context($project)]);
+    }
     public function index(Request $request, LabProject $project, ModuleInstallations $modules): JsonResponse
     {
         return $this->respond($modules->listing($request->user(), $project));
@@ -88,10 +94,18 @@ final class LabModuleController extends Controller
 
     public function embed(Request $request, LabProject $project, LabModuleInstallation $module, ModuleEmbed $embed): JsonResponse
     {
-        $body = $this->body($request, ['route','expected_app_hash']);
+        $body = $this->body($request, ['route','expected_app_hash','expected_files','impact_hash'], 16384);
         abort_unless(isset($body->route) && is_string($body->route) && strlen($body->route) <= 250
             && isset($body->expected_app_hash) && is_string($body->expected_app_hash) && preg_match('/^[a-f0-9]{64}$/D', $body->expected_app_hash), 422, 'Invalid widget placement.');
-        return $this->respond($embed->embed($request->user(), $project, $module, $body->route, $body->expected_app_hash));
+        abort_unless(isset($body->expected_files,$body->impact_hash) && $body->expected_files instanceof \stdClass && is_string($body->impact_hash) && preg_match('/^[a-f0-9]{64}$/D', $body->impact_hash), 422, 'Review the full widget update before applying.');
+        return $this->respond($embed->embed($request->user(), $project, $module, $body->route, $body->expected_app_hash, (array) $body->expected_files, $body->impact_hash));
+    }
+
+    public function embedPlan(Request $request, LabProject $project, LabModuleInstallation $module, ModuleEmbed $embed): JsonResponse
+    {
+        abort_unless(array_diff(array_keys($request->query()), ['route']) === [], 422);
+        $data = $request->validate(['route' => ['required','string','max:250']]);
+        return $this->respond($embed->plan($request->user(), $project, $module, $data['route']));
     }
 
     public function news(Request $request, LabProject $project, LabModuleInstallation $module, NewsArticles $news): JsonResponse
@@ -133,8 +147,16 @@ final class LabModuleController extends Controller
 
     public function orders(Request $request, LabProject $project, LabModuleInstallation $module, \App\Lab\Modules\CommerceStore $commerce): JsonResponse
     {
-        $filters = $request->validate(['status' => ['sometimes','in:awaiting_payment,pending_review,paid,rejected,cancelled']]);
-        return $this->respond($commerce->listOrders($request->user(), $project, $module, $filters['status'] ?? null));
+        abort_unless(array_diff(array_keys($request->query()), ['status','cursor']) === [], 422);
+        $filters = $request->validate(['status' => ['sometimes','in:awaiting_payment,pending_review,paid,rejected,cancelled'], 'cursor' => ['sometimes','string','max:256']]);
+        return $this->respond($commerce->listOrders($request->user(), $project, $module, $filters['status'] ?? null, $filters['cursor'] ?? null));
+    }
+
+    public function orderAttempts(Request $request, LabProject $project, LabModuleInstallation $module, string $order, \App\Lab\Modules\CommerceStore $commerce): JsonResponse
+    {
+        abort_unless(array_diff(array_keys($request->query()), ['cursor']) === [], 422);
+        $filters = $request->validate(['cursor' => ['sometimes','string','max:256']]);
+        return $this->respond($commerce->listOrderAttempts($request->user(), $project, $module, $order, $filters['cursor'] ?? null));
     }
 
     public function paymentSettings(Request $request, LabProject $project, LabModuleInstallation $module, \App\Lab\Modules\CommerceStore $commerce): JsonResponse
@@ -150,8 +172,34 @@ final class LabModuleController extends Controller
 
     public function reviewPaymentAttempt(Request $request, LabProject $project, LabModuleInstallation $module, string $attempt, \App\Lab\Modules\CommerceStore $commerce): JsonResponse
     {
-        $body = $this->body($request, ['expected_version','decision','reason'], 4096);
+        $body = $this->body($request, ['expected_version','decision','reason','bank_verified'], 4096);
         return $this->respond($commerce->reviewPaymentSlip($request->user(), $project, $module, $attempt, (array) $body));
+    }
+
+    public function revokeOrderAccess(Request $request, LabProject $project, LabModuleInstallation $module, string $order, \App\Lab\Modules\CommerceStore $commerce): JsonResponse
+    {
+        $this->body($request, [], 1024);
+        return $this->respond($commerce->revokeOrderAccess($request->user(), $project, $module, $order));
+    }
+
+    public function paymentImage(Request $request, LabProject $project, LabModuleInstallation $module, string $attempt, \App\Lab\Modules\CommerceStore $commerce): JsonResponse
+    {
+        abort_unless($request->query() === [], 422);
+        return $this->respond($commerce->slipImage($request->user(), $project, $module, $attempt));
+    }
+
+    public function legacyPaymentImage(Request $request, LabProject $project, LabModuleInstallation $module, string $attempt, \App\Lab\Modules\CommerceStore $commerce): \Illuminate\Http\Response
+    {
+        abort_unless($request->query() === [], 422);
+        return response($commerce->legacySlipImage($request->user(), $project, $module, $attempt), 200, [
+            'Content-Type'=>'image/png','Cache-Control'=>'private, no-store','X-Content-Type-Options'=>'nosniff','Content-Disposition'=>'inline; filename="payment-evidence.png"',
+        ]);
+    }
+
+    public function reconcileSlipUploads(Request $request, LabProject $project, LabModuleInstallation $module, \App\Lab\Modules\CommerceStore $commerce): JsonResponse
+    {
+        $this->body($request, [], 1024);
+        return $this->respond($commerce->reconcileSlips($request->user(), $project, $module));
     }
 
     private function body(Request $request, array $keys, int $maxBytes = 2048): \stdClass

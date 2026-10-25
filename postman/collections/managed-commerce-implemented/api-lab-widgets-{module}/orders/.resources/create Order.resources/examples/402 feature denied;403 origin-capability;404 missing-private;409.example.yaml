@@ -1,0 +1,48 @@
+$kind: http-example
+name: 402 feature denied;403 origin/capability;404 missing/private;409 CAS/idempotency/not-ready;413 size;419 owner CSRF;422 validation;423 readiness/source-only;429 rate/concurrency;503 upstream/decoder unavailable.
+request:
+  url: "{{baseUrl}}/api/lab-widgets/:module/orders"
+  method: POST
+  headers:
+    - key: Origin
+      value: https://JpjkWUDsSQFpCbihbw.bsy8GuMGleFP
+      disabled: false
+      description: (Required) Exact authorized publication origin. CORS permits Content-Type/Accept/X-Krikkit-Order-Token without credentials.
+    - key: Accept
+      value: application/json
+  pathVariables:
+    - key: module
+      value: 34c9f942-d901-6272-1761-67c2ee5e8e3a
+      disabled: false
+      description: "(Required) "
+  body:
+    type: json
+    content: |-
+      {
+        "idempotency_key": "17006de4-0211-ef26-b140-93fdbdb3905a",
+        "quote_uuid": "4cfb95b3-7563-6171-cb36-cf9a5ded94f0",
+        "customer_name": "string",
+        "customer_email": "qxc7aiXA8@wyYKXBqaWudUgctcK.myc",
+        "items": [
+          {
+            "product_uuid": "a18ea570-db7f-70b4-beee-d733618e8cbc",
+            "quantity": 1
+          }
+        ],
+        "customer_phone": "string",
+        "note": "string"
+      }
+response:
+  statusCode: 500
+  statusText: Internal Server Error
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "message": "string",
+        "errors": {},
+        "code": "string"
+      }
+order: 3000

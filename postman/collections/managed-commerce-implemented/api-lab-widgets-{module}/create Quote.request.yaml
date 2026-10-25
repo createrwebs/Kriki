@@ -1,0 +1,32 @@
+$kind: http-request
+description: Maximum16KiB JSON. Only distinct product UUID/quantity lines are accepted. Server calculates integer satang and snapshots product/payment versions. Quote expires after10 minutes. No order is created by this request. Rate10/min/IP/module and100/min/module, independently of order creation.
+url: "{{baseUrl}}/api/lab-widgets/:module/quotes"
+method: POST
+headers:
+  - key: Origin
+    value: "{{publicationOrigin}}"
+    disabled: false
+    description: (Required) Exact authorized publication origin. CORS permits Content-Type/Accept/X-Krikkit-Order-Token without credentials.
+  - key: Content-Type
+    value: application/json
+  - key: Accept
+    value: application/json
+pathVariables:
+  - key: module
+    value: 34c9f942-d901-6272-1761-67c2ee5e8e3a
+    disabled: false
+    description: "(Required) "
+body:
+  type: json
+  content: |-
+    {
+      "items": [
+        {
+          "product_uuid": "d86bc525-9296-95b2-6418-d53506aa6e80",
+          "quantity": 17
+        }
+      ]
+    }
+settings: {}
+examples: ./.resources/create Quote.resources/examples
+order: 2000

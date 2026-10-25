@@ -17,7 +17,7 @@
             <krikkit:icon name="bars-3" class="size-5" />
         </button>
         <a href="{{ route('home') }}" wire:navigate class="flex items-center gap-2 lg:hidden">
-            <span class="truncate text-sm font-semibold tracking-tight text-krikkit-fg">{{ $site->name() }}</span>
+            <x-site.mark />
         </a>
     </div>
 

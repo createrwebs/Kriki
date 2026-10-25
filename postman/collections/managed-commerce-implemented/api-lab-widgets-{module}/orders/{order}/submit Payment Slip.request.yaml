@@ -1,0 +1,43 @@
+$kind: http-request
+description: Maximum7100000 JSON bytes, decoded image5MiB and20MP. PNG/JPEG/WebP decoded and re-encoded PNG without metadata. All mutable receipt fields and normalized image hash participate in idempotency. Accepted/cancelled order cannot receive a new attempt. Upload never marks paid. Rate5/min/order, 20/hour/order,100/hour/module. Missing image decoder503. A staged receipt fences the private no-upsert PNG object. Commit atomically records attempt and pending-review state. Ambiguous commit recovery never deletes committed evidence; failed uncommitted cleanup remains for owner reconciliation.
+url: "{{baseUrl}}/api/lab-widgets/:module/orders/:order/slips"
+method: POST
+headers:
+  - key: Origin
+    value: "{{publicationOrigin}}"
+    disabled: false
+    description: (Required) Exact authorized publication origin. CORS permits Content-Type/Accept/X-Krikkit-Order-Token without credentials.
+  - key: Content-Type
+    value: application/json
+  - key: Accept
+    value: application/json
+pathVariables:
+  - key: module
+    value: 34c9f942-d901-6272-1761-67c2ee5e8e3a
+    disabled: false
+    description: "(Required) "
+  - key: order
+    value: 34c9f942-d901-6272-1761-67c2ee5e8e3a
+    disabled: false
+    description: "(Required) "
+body:
+  type: json
+  content: |-
+    {
+      "idempotency_key": "2f7d8ceb-0a22-4572-78d8-8ff52a04049f",
+      "payer_name": "string",
+      "amount_satang": 55565999,
+      "slip_data_url": "data:image/webp;base64,",
+      "payer_phone": "string",
+      "transfer_ref": "string",
+      "claimed_transferred_at": "string"
+    }
+auth:
+  type: apikey
+  credentials:
+    key: X-Krikkit-Order-Token
+    value: "{{orderToken}}"
+    in: header
+settings: {}
+examples: ./.resources/submit Payment Slip.resources/examples
+order: 2000

@@ -1,0 +1,50 @@
+$kind: http-example
+name: Saved order; no image, token hash or customer email/phone.
+request:
+  url: "{{baseUrl}}/api/lab-widgets/:module/orders/:order"
+  method: GET
+  headers:
+    - key: X-Krikkit-Order-Token
+      value: <API Key>
+      description: "Added as a part of security scheme: apikey"
+    - key: Origin
+      value: https://JpjkWUDsSQFpCbihbw.bsy8GuMGleFP
+      disabled: false
+      description: (Required) Exact authorized publication origin. CORS permits Content-Type/Accept/X-Krikkit-Order-Token without credentials.
+    - key: Accept
+      value: application/json
+  pathVariables:
+    - key: module
+      value: 34c9f942-d901-6272-1761-67c2ee5e8e3a
+      disabled: false
+      description: "(Required) "
+    - key: order
+      value: 34c9f942-d901-6272-1761-67c2ee5e8e3a
+      disabled: false
+      description: "(Required) "
+  body:
+    type: text
+    content: ""
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "order": {
+          "uuid": "bb5d6fc3-2ad8-712d-8d86-1920bcaf5cd6",
+          "reference": "string",
+          "customer_name": "string",
+          "total_satang": 3374510,
+          "currency": {},
+          "status": "paid",
+          "promptpay": {},
+          "latest_slip": {},
+          "created_at": "string",
+          "updated_at": "string"
+        }
+      }
+order: 1000

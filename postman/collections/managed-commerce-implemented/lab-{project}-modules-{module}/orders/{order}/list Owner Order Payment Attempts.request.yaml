@@ -1,0 +1,30 @@
+$kind: http-request
+description: Orders module only. Fresh owner/project/module/order binding, then queries only that order's manual-payments metadata. Twenty-five per keyset page, uploaded_at DESC/uuid DESC. No image bytes, object paths or signed URLs. Unknown/malformed query fields422. Owner history survives disable/freeze/downgrade.
+url: "{{baseUrl}}/lab/:project/modules/:module/orders/:order/payment-attempts?cursor=string"
+method: GET
+headers:
+  Cookie: "{{ownerCookieName}}={{ownerSession}}"
+  Accept: application/json
+queryParams:
+  - key: cursor
+    value: string
+    disabled: false
+    description: Opaque next_cursor from the previous page; omit for latest records. Retain the same status/order filter while paging.
+pathVariables:
+  - key: project
+    value: 42f952c6-86e7-67ab-8842-f8dac3a02326
+    disabled: false
+    description: "(Required) "
+  - key: module
+    value: 42f952c6-86e7-67ab-8842-f8dac3a02326
+    disabled: false
+    description: "(Required) "
+  - key: order
+    value: 42f952c6-86e7-67ab-8842-f8dac3a02326
+    disabled: false
+    description: "(Required) "
+auth:
+  type: noauth
+settings: {}
+examples: ./.resources/list Owner Order Payment Attempts.resources/examples
+order: 1000

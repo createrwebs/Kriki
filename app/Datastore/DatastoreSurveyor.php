@@ -4,6 +4,11 @@ namespace App\Datastore;
 
 use App\Datastore\Lenses\SupabaseLens;
 use App\Models\User;
+use App\Lab\LabProjectAccess;
+use App\Lab\Modules\ModuleCatalog;
+use App\Models\LabModuleInstallation;
+use App\Models\LabProject;
+use App\Models\LabProjectCapability;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -16,6 +21,41 @@ final class DatastoreSurveyor
         private readonly SupabaseLinkBroker $broker,
         private readonly SupabaseLens $supabase,
     ) {}
+
+    /** Registration metadata only: shared remote tables have no reviewed project mapping yet. */
+    public function forProject(User $actor, LabProject $project): array
+    {
+        LabProjectAccess::assertOwner($project, $actor);
+        $link = $this->broker->statusFor($actor);
+        $selected = LabProjectCapability::query()->where('lab_project_id', $project->id)->pluck('enabled', 'key');
+        $modules = LabModuleInstallation::query()
+            ->where('user_id', $actor->id)->where('lab_project_id', $project->id)
+            ->whereIn('key', array_keys(ModuleCatalog::all()))->orderBy('key')->get()
+            ->map(function (LabModuleInstallation $module) use ($link, $selected) {
+                $definition = ModuleCatalog::get($module->key);
+
+                return [
+                    'uuid' => $module->uuid, 'key' => $module->key, 'title' => $definition['title'],
+                    'revision' => $module->revision, 'schema_version' => $module->schema_version,
+                    'required_schema_version' => $definition['schema_version'], 'status' => $module->status,
+                    'enabled' => $module->enabled, 'selected' => (bool) ($selected[$module->key] ?? false),
+                    'connection_matches' => ($link['ready'] ?? false)
+                        && filled($module->supabase_project_ref)
+                        && $module->supabase_project_ref === ($link['project_ref'] ?? null),
+                ];
+            })->all();
+
+        return [
+            'scope' => 'project', 'survey_mode' => 'registration_metadata', 'lab_project_uuid' => $project->uuid,
+            'ready' => (bool) ($link['ready'] ?? false), 'kind' => DatastoreKind::SUPABASE,
+            'status' => ($link['ready'] ?? false) ? 'ready' : 'missing',
+            'host' => $link['host'] ?? '', 'project_ref' => $link['project_ref'] ?? '',
+            'can_revise' => false, 'oauth_ready' => (bool) ($link['oauth_ready'] ?? false),
+            'linked' => (bool) ($link['linked'] ?? false),
+            'client_env' => [], 'suggested_files' => [], 'tables' => [], 'modules' => $modules,
+            'message' => 'Project module registration metadata only; this is not a live schema check. Unmapped external tables and account-wide credentials are hidden. Use managed widgets and their scoped APIs; schema changes require a proposal and owner Apply.',
+        ];
+    }
 
     /**
      * @return array{

@@ -1,0 +1,50 @@
+$kind: http-example
+name: Active products and masked recipient information only.
+request:
+  url: "{{baseUrl}}/api/lab-widgets/:module/storefront"
+  method: GET
+  headers:
+    - key: Origin
+      value: https://JpjkWUDsSQFpCbihbw.bsy8GuMGleFP
+      disabled: false
+      description: (Required) Exact authorized publication origin. CORS permits Content-Type/Accept/X-Krikkit-Order-Token without credentials.
+    - key: Accept
+      value: application/json
+  pathVariables:
+    - key: module
+      value: 34c9f942-d901-6272-1761-67c2ee5e8e3a
+      disabled: false
+      description: "(Required) "
+  body:
+    type: text
+    content: ""
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "products": [
+          {
+            "uuid": "51a21185-a1b9-fd24-9723-d212a31a6a23",
+            "sku": "string",
+            "title": "string",
+            "description": "string",
+            "price_satang": 33020337
+          },
+          {
+            "uuid": "94f3ae50-076b-73e1-f69f-7d423b1b3e78",
+            "sku": "string",
+            "title": "string",
+            "description": "string",
+            "price_satang": 33159183
+          }
+        ],
+        "currency": {},
+        "checkout_ready": false,
+        "payment": {}
+      }
+order: 1000

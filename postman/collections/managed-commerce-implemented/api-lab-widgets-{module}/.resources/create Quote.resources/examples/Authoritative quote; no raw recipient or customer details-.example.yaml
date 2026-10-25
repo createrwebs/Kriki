@@ -1,0 +1,46 @@
+$kind: http-example
+name: Authoritative quote; no raw recipient or customer details.
+request:
+  url: "{{baseUrl}}/api/lab-widgets/:module/quotes"
+  method: POST
+  headers:
+    - key: Origin
+      value: https://JpjkWUDsSQFpCbihbw.bsy8GuMGleFP
+      disabled: false
+      description: (Required) Exact authorized publication origin. CORS permits Content-Type/Accept/X-Krikkit-Order-Token without credentials.
+    - key: Accept
+      value: application/json
+  pathVariables:
+    - key: module
+      value: 34c9f942-d901-6272-1761-67c2ee5e8e3a
+      disabled: false
+      description: "(Required) "
+  body:
+    type: json
+    content: |-
+      {
+        "items": [
+          {
+            "product_uuid": "d86bc525-9296-95b2-6418-d53506aa6e80",
+            "quantity": 17
+          }
+        ]
+      }
+response:
+  statusCode: 201
+  statusText: Created
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "quote": {
+          "quote_uuid": "63c18789-9b35-6ad6-3e82-16679cb44b5a",
+          "catalog_version": "string",
+          "total_satang": 36801864,
+          "currency": {},
+          "expires_at": "1997-08-17T13:45:09.321Z"
+        }
+      }
+order: 1000

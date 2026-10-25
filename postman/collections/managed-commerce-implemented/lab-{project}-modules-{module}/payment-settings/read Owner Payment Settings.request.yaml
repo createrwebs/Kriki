@@ -1,0 +1,21 @@
+$kind: http-request
+description: ""
+url: "{{baseUrl}}/lab/:project/modules/:module/payment-settings"
+method: GET
+headers:
+  Cookie: "{{ownerCookieName}}={{ownerSession}}"
+  Accept: application/json
+pathVariables:
+  - key: project
+    value: 42f952c6-86e7-67ab-8842-f8dac3a02326
+    disabled: false
+    description: "(Required) "
+  - key: module
+    value: 42f952c6-86e7-67ab-8842-f8dac3a02326
+    disabled: false
+    description: "(Required) "
+auth:
+  type: noauth
+settings: {}
+examples: ./.resources/read Owner Payment Settings.resources/examples
+order: 1000

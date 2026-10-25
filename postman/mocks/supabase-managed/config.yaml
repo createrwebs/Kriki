@@ -1,5 +1,5 @@
 version: 1
 name: Supabase managed module contract
 description: Local contract simulation with fictional credentials; no remote database writes.
-interceptRequests: true
+interceptRequests: false
 mockSrc: default.js

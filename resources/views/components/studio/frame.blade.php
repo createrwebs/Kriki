@@ -6,7 +6,7 @@
 ])
 
 <div
-    class="flex min-h-screen bg-krikkit-canvas"
+    class="studio-admin studio-home studio-admin-frame flex min-h-screen bg-krikkit-canvas"
     x-data="{
         navOpen: false,
         desktop: false,
@@ -35,11 +35,7 @@
 
     @include('livewire.studio.partials.sidebar')
 
-    <div class="relative flex min-w-0 flex-1 flex-col bg-krikkit-canvas">
-        <div
-            class="pointer-events-none absolute inset-x-0 top-0 z-0 h-96 bg-[radial-gradient(ellipse_at_top,color-mix(in_oklab,var(--color-accent)_28%,transparent),transparent_70%)]"
-            aria-hidden="true"
-        ></div>
+    <div class="studio-admin-sheet relative flex min-w-0 flex-1 flex-col bg-krikkit-canvas">
         <div class="relative z-10 mx-auto flex min-h-0 w-full max-w-screen-2xl flex-1 flex-col">
             @include('livewire.studio.partials.header')
             <div class="flex min-h-0 flex-1 flex-col">

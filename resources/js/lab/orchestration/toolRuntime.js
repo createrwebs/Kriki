@@ -388,8 +388,15 @@ export async function applyToolCalls(args = {}) {
             }
             case 'survey_datastore': {
                 const surveyKey = `survey-${call?.id || 'active'}`
+                if (!projectUuid) {
+                    observation = observationError('survey_datastore', 'Open a saved Lab project before inspecting its database.', {
+                        errorClass: ERROR_CLASSES.POLICY,
+                        hint: 'project_required',
+                    })
+                    break
+                }
                 try {
-                    let bundle = await surveyLabDatastore({ fresh: Boolean(input.fresh) })
+                    let bundle = await surveyLabDatastore({ projectUuid, fresh: Boolean(input.fresh) })
                     if (! bundle.ready && bundle.status === 'missing' && bundle.oauth_ready) {
                         onEvent?.({
                             type: 'ui',
@@ -402,9 +409,12 @@ export async function applyToolCalls(args = {}) {
                             },
                         })
                         await ensureDatastoreLinked(abortSignal)
-                        bundle = await surveyLabDatastore({ fresh: true })
+                        bundle = await surveyLabDatastore({ projectUuid, fresh: true })
                     }
-                    const tables = Array.isArray(bundle.tables) ? bundle.tables : []
+                    if (bundle.scope !== 'project' || bundle.lab_project_uuid !== projectUuid) {
+                        throw new Error('Datastore survey response does not match the current Lab project.')
+                    }
+                    const tables = []
                     onEvent?.({
                         type: 'ui',
                         datastoreSurvey: {
@@ -418,13 +428,15 @@ export async function applyToolCalls(args = {}) {
                     observation = bundle.ready
                         ? observationOk('survey_datastore', bundle.message || 'Datastore ready.', {
                             ready: true,
+                            scope: bundle.scope,
+                            lab_project_uuid: bundle.lab_project_uuid,
+                            survey_mode: bundle.survey_mode,
+                            modules: Array.isArray(bundle.modules) ? bundle.modules : [],
                             status: bundle.status,
                             host: bundle.host,
                             can_revise: Boolean(bundle.can_revise),
-                            client_env: bundle.client_env && typeof bundle.client_env === 'object'
-                                ? bundle.client_env
-                                : {},
-                            suggested_files: Array.isArray(bundle.suggested_files) ? bundle.suggested_files : [],
+                            client_env: [],
+                            suggested_files: [],
                             tables,
                         })
                         : observationError('survey_datastore', bundle.message || 'Datastore is not configured.', {

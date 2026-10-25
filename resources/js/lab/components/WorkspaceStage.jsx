@@ -146,7 +146,7 @@ export function WorkspaceStage({
             )}
 
             {panel === 'tables' && (
-                <DatastoreDesk onConnect={onConnectDatastore} onChangeProject={onChangeDatastore} />
+                <DatastoreDesk key={projectUuid} projectUuid={projectUuid} onConnect={onConnectDatastore} onChangeProject={onChangeDatastore} />
             )}
 
             {panel === 'forms' ? <Suspense fallback={<p className="p-6">กำลังโหลดฟอร์ม…</p>}><FormsDesk projectUuid={projectUuid} onAskLab={onAskLab} /></Suspense> : null}

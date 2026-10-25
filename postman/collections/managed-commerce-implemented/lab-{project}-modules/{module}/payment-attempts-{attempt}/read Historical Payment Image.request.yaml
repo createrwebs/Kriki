@@ -1,0 +1,25 @@
+$kind: http-request
+description: No query fields. Fresh owner/project/manual_payments/attempt checks on every fetch. Inline historical evidence only; Storage-backed evidence404. Returns normalized PNG, private no-store and nosniff. Preserves original evidence, hashes, review state and retention. Available after freeze/disable/downgrade.
+url: "{{baseUrl}}/lab/:project/modules/:module/payment-attempts/:attempt/legacy-image"
+method: GET
+headers:
+  Cookie: "{{ownerCookieName}}={{ownerSession}}"
+  Accept: image/png
+pathVariables:
+  - key: project
+    value: 34c9f942-d901-6272-1761-67c2ee5e8e3a
+    disabled: false
+    description: "(Required) "
+  - key: module
+    value: 34c9f942-d901-6272-1761-67c2ee5e8e3a
+    disabled: false
+    description: "(Required) "
+  - key: attempt
+    value: 34c9f942-d901-6272-1761-67c2ee5e8e3a
+    disabled: false
+    description: "(Required) "
+auth:
+  type: noauth
+settings: {}
+examples: ./.resources/read Historical Payment Image.resources/examples
+order: 2000

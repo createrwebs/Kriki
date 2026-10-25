@@ -21,8 +21,7 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <x-layouts.partials.themeBoot />
-        <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=sora:400,500,600,700&display=swap" rel="stylesheet" />
+        <x-layouts.partials.fonts />
         <x-layouts.partials.brand />
         <x-layouts.partials.seo />
         @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))

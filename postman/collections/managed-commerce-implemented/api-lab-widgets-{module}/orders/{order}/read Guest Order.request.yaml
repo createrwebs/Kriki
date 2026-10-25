@@ -1,0 +1,29 @@
+$kind: http-request
+description: No query parameters; tokens in URLs cannot authorize. Capability expires24h from created_at; invalid/missing/expired/revoked/cross-order404. Authorized history remains available after disable/downgrade/freeze with original datastore pin.
+url: "{{baseUrl}}/api/lab-widgets/:module/orders/:order"
+method: GET
+headers:
+  - key: Origin
+    value: "{{publicationOrigin}}"
+    disabled: false
+    description: (Required) Exact authorized publication origin. CORS permits Content-Type/Accept/X-Krikkit-Order-Token without credentials.
+  - key: Accept
+    value: application/json
+pathVariables:
+  - key: module
+    value: 34c9f942-d901-6272-1761-67c2ee5e8e3a
+    disabled: false
+    description: "(Required) "
+  - key: order
+    value: 34c9f942-d901-6272-1761-67c2ee5e8e3a
+    disabled: false
+    description: "(Required) "
+auth:
+  type: apikey
+  credentials:
+    key: X-Krikkit-Order-Token
+    value: "{{orderToken}}"
+    in: header
+settings: {}
+examples: ./.resources/read Guest Order.resources/examples
+order: 1000

@@ -9,7 +9,6 @@ use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 use RuntimeException;
 use Throwable;
-use ZipArchive;
 
 /**
  * Materialize a GitHub repo into a Lab workspace.
@@ -56,52 +55,50 @@ final class GithubRepoImporter
         ?string $ref = null,
         ?string $accessToken = null,
         ?string $rootDirectory = null,
+        bool $replaceWorkspace = false,
+        ?callable $beforePromotion = null,
     ): array {
         $started = microtime(true);
-        $requestedRoot = trim(str_replace('\\', '/', (string) $rootDirectory), '/');
-        if (str_contains($requestedRoot, '..')) {
+        $requestedRoot = trim((string) $rootDirectory, '/');
+        if (str_contains($requestedRoot, '..') || str_contains($requestedRoot, '\\') || preg_match('/[\x00-\x1f\x7f:%]/', $requestedRoot)) {
             throw new InvalidArgumentException(__('dashboard.Enter a valid GitHub repository URL (https://github.com/owner/repo).'));
         }
+        $revision = $this->workspace->importRevision($project);
 
         try {
+            $requestedRef = filled($ref) ? trim($ref) : $this->api->defaultBranch($owner, $repo, $accessToken);
+            $ref = $this->api->resolveCommitSha($owner, $repo, $requestedRef, $accessToken);
             $resolvedRoot = $requestedRoot !== ''
                 ? $requestedRoot
                 : $this->detectAppRootViaApi($owner, $repo, $ref, $accessToken);
 
             if ($resolvedRoot !== null && $resolvedRoot !== '') {
-                try {
-                    $result = $this->importSubtree($project, $owner, $repo, $resolvedRoot, $ref, $accessToken);
+                $result = $this->importSubtree($project, $owner, $repo, $resolvedRoot, $ref, $accessToken, $revision, $replaceWorkspace, $beforePromotion);
 
-                    Log::info('lab.github.import.done', [
-                        'project_uuid' => $project->uuid,
-                        'owner' => $owner,
-                        'repo' => $repo,
-                        'resolved_root' => $resolvedRoot,
-                        'mode' => 'subtree',
-                        'imported' => count($result['paths']),
-                        'skipped' => $result['skipped'],
-                        'total_ms' => (int) round((microtime(true) - $started) * 1000),
-                    ]);
+                Log::info('lab.github.import.done', [
+                    'project_uuid' => $project->uuid,
+                    'owner' => $owner,
+                    'repo' => $repo,
+                    'resolved_root' => $resolvedRoot,
+                    'mode' => 'subtree',
+                    'imported' => count($result['paths']),
+                    'skipped' => $result['skipped'],
+                    'total_ms' => (int) round((microtime(true) - $started) * 1000),
+                ]);
 
-                    return [
-                        'owner' => $owner,
-                        'repo' => $repo,
-                        'paths' => $result['paths'],
-                        'skipped' => $result['skipped'],
-                        'root' => $resolvedRoot,
-                        'mode' => 'subtree',
-                    ];
-                } catch (Throwable $subtreeError) {
-                    Log::warning('lab.github.subtree.fallback_zip', [
-                        'owner' => $owner,
-                        'repo' => $repo,
-                        'root' => $resolvedRoot,
-                        'message' => $subtreeError->getMessage(),
-                    ]);
-                }
+                return [
+                    'owner' => $owner,
+                    'repo' => $repo,
+                    'paths' => $result['paths'],
+                    'skipped' => $result['skipped'],
+                    'root' => $resolvedRoot,
+                    'mode' => 'subtree',
+                    'commit_sha' => $ref,
+                    'requested_ref' => $requestedRef,
+                ];
             }
 
-            return $this->importZipball($project, $owner, $repo, $ref, $accessToken, $resolvedRoot, $started);
+            return [...$this->importZipball($project, $owner, $repo, $ref, $accessToken, $resolvedRoot, $started, $revision, $replaceWorkspace, $beforePromotion), 'commit_sha' => $ref, 'requested_ref' => $requestedRef];
         } catch (Throwable $e) {
             Log::warning('lab.github.import.failed', [
                 'project_uuid' => $project->uuid,
@@ -141,6 +138,9 @@ final class GithubRepoImporter
         string $root,
         ?string $ref,
         ?string $accessToken,
+        string $revision,
+        bool $replaceWorkspace,
+        ?callable $beforePromotion,
     ): array {
         $maxFiles = LabGithubImportLimits::maxFiles();
         $maxFileBytes = (int) config('lab.github.max_file_bytes', 2 * 1024 * 1024);
@@ -164,10 +164,7 @@ final class GithubRepoImporter
             $maxFileBytes,
         );
 
-        $result = $this->workspace->importFileMap($project, $files);
-        $this->workspace->ensureFumadocsSourceStub($project);
-
-        return $result;
+        return $this->workspace->importFileMap($project, $files, $revision, $replaceWorkspace, $beforePromotion);
     }
 
     /**
@@ -181,6 +178,9 @@ final class GithubRepoImporter
         ?string $accessToken,
         ?string $resolvedRoot,
         float $started,
+        string $revision,
+        bool $replaceWorkspace,
+        ?callable $beforePromotion,
     ): array {
         $zipPath = null;
         $extractRoot = null;
@@ -214,8 +214,7 @@ final class GithubRepoImporter
             ]);
 
             $source = $this->resolveImportSource($repoRoot, $root);
-            $result = $this->workspace->importTree($project, $source);
-            $this->workspace->ensureFumadocsSourceStub($project);
+            $result = $this->workspace->importTree($project, $source, $revision, $replaceWorkspace, $beforePromotion);
 
             Log::info('lab.github.import.done', [
                 'project_uuid' => $project->uuid,
@@ -348,38 +347,7 @@ final class GithubRepoImporter
 
     private function extractZip(string $zipPath): string
     {
-        if (! class_exists(ZipArchive::class)) {
-            throw new RuntimeException(__('dashboard.ZIP support is required to import from GitHub.'));
-        }
-
-        $target = sys_get_temp_dir().DIRECTORY_SEPARATOR.'krikkit-gh-'.bin2hex(random_bytes(8));
-        File::ensureDirectoryExists($target);
-
-        $zip = new ZipArchive;
-        $opened = $zip->open($zipPath);
-
-        if ($opened !== true) {
-            File::deleteDirectory($target);
-
-            throw new RuntimeException(__('dashboard.Could not read the GitHub repository archive.'));
-        }
-
-        try {
-            if (! $zip->extractTo($target)) {
-                throw new RuntimeException(__('dashboard.Could not extract the GitHub repository archive.'));
-            }
-        } catch (Throwable $e) {
-            $zip->close();
-            File::deleteDirectory($target);
-
-            throw $e instanceof RuntimeException
-                ? $e
-                : new RuntimeException(__('dashboard.Could not extract the GitHub repository archive.'), previous: $e);
-        }
-
-        $zip->close();
-
-        return $target;
+        return (new GithubSourceArchive)->extract($zipPath);
     }
 
     private function resolveRepoRoot(string $extractRoot): string

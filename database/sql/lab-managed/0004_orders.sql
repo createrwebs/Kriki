@@ -58,7 +58,7 @@ RETURNS TABLE(order_uuid uuid,reference text,total_satang integer,status text,ve
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $fn$
 DECLARE saved public.krikkit_commerce_orders%ROWTYPE;
 BEGIN
-  IF NOT EXISTS(SELECT 1 FROM public.krikkit_orders_installations i WHERE i.project_uuid=p_project_uuid AND i.module_uuid=p_module_uuid AND i.schema_version=1) THEN RAISE EXCEPTION 'module_not_installed'; END IF;
+  IF NOT EXISTS(SELECT 1 FROM public.krikkit_orders_installations i WHERE i.project_uuid=p_project_uuid AND i.module_uuid=p_module_uuid AND i.schema_version IN(1,2)) THEN RAISE EXCEPTION 'module_not_installed'; END IF;
   IF p_key IS NULL OR p_hash IS NULL OR p_hash !~ '^[a-f0-9]{64}$' OR jsonb_typeof(p_values) IS DISTINCT FROM 'object'
     OR jsonb_typeof(p_values->'reference') IS DISTINCT FROM 'string' OR jsonb_typeof(p_values->'customer_name') IS DISTINCT FROM 'string'
     OR jsonb_typeof(p_values->'customer_email') IS DISTINCT FROM 'string' OR jsonb_typeof(p_values->'customer_phone') IS DISTINCT FROM 'string'

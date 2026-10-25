@@ -1,0 +1,54 @@
+$kind: http-example
+name: New201 or exact replay200; payment remains unverified.
+request:
+  url: "{{baseUrl}}/api/lab-widgets/:module/orders/:order/slips"
+  method: POST
+  headers:
+    - key: X-Krikkit-Order-Token
+      value: <API Key>
+      description: "Added as a part of security scheme: apikey"
+    - key: Origin
+      value: https://JpjkWUDsSQFpCbihbw.bsy8GuMGleFP
+      disabled: false
+      description: (Required) Exact authorized publication origin. CORS permits Content-Type/Accept/X-Krikkit-Order-Token without credentials.
+    - key: Accept
+      value: application/json
+  pathVariables:
+    - key: module
+      value: 34c9f942-d901-6272-1761-67c2ee5e8e3a
+      disabled: false
+      description: "(Required) "
+    - key: order
+      value: 34c9f942-d901-6272-1761-67c2ee5e8e3a
+      disabled: false
+      description: "(Required) "
+  body:
+    type: json
+    content: |-
+      {
+        "idempotency_key": "2f7d8ceb-0a22-4572-78d8-8ff52a04049f",
+        "payer_name": "string",
+        "amount_satang": 55565999,
+        "slip_data_url": "data:image/webp;base64,",
+        "payer_phone": "string",
+        "transfer_ref": "string",
+        "claimed_transferred_at": "string"
+      }
+response:
+  statusCode: 201
+  statusText: Created
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "slip": {
+          "uuid": "1fb7ef27-f459-03fe-1e59-7b18eb07538e",
+          "order_uuid": "68840a9a-15b4-cb4c-15fd-7d1ee05f9869",
+          "status": "string",
+          "order_status": "cancelled"
+        },
+        "replayed": false
+      }
+order: 2000

@@ -1,0 +1,48 @@
+$kind: http-example
+name: Exact source and module compatibility snapshot, or null for a plain site.
+request:
+  url: "{{baseUrl}}/lab/:project/modules/build-context"
+  method: GET
+  headers:
+    - key: laravel_session
+      value: <API Key>
+      description: "Added as a part of security scheme: apikey"
+    - key: Accept
+      value: application/json
+  pathVariables:
+    - key: project
+      value: 34c9f942-d901-6272-1761-67c2ee5e8e3a
+      disabled: false
+      description: "(Required) "
+  body:
+    type: text
+    content: ""
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "context": {
+          "version": {},
+          "project_uuid": "9fe8e593-3e0b-0234-aeae-003d5ad02983",
+          "sdk_version": {},
+          "runtime_version": {},
+          "modules": {
+            "key_0": {
+              "uuid": "15096ae1-e7cd-b1f8-73ed-26e257a10f84",
+              "schema_version": 7613
+            }
+          },
+          "source_hash": "895bdc7537d804e577e2ec97b92a0083743a730d81cbcd3d0148835ede2958f0",
+          "source_files": {
+            "key_0": "a3fbcc158acd7674783d32c02af0bb6b06ec3084792eaca5391da9f6a53eafe5",
+            "key_1": "f546d29309cb4d64fbaf841dbc251e1f84025f8380cde4563a344da477714ba6",
+            "key_2": "da98cd82c0ec28a671b85813f5feae9f39af0e2f93a9c384b6354aece7c32838"
+          }
+        }
+      }
+order: 1000

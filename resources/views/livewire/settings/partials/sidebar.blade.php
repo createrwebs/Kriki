@@ -21,7 +21,7 @@
     x-bind:aria-hidden="(! desktop && ! navOpen).toString()"
 >
     <div class="flex items-center gap-3 px-5 pb-5 pt-4">
-        <a href="{{ route('home') }}" wire:navigate class="flex min-w-0 flex-1 items-center gap-3">
+        <a href="{{ route('home') }}" wire:navigate class="flex min-w-0 flex-1 flex-col items-start gap-2">
             <x-site.mark />
             <span class="truncate text-base font-semibold tracking-tight text-krikkit-fg">{{ __('settings.Settings') }}</span>
         </a>

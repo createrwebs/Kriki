@@ -1,15 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
+import { Package, ReceiptText, CreditCard, Newspaper, Inbox, Settings2, ArrowUpRight, RefreshCw } from 'lucide-react'
+import '../../../../css/studio.css'
 import {
     applyModuleProposal,
     cancelModuleProposal,
     embedModule,
+    moduleEmbedPlan,
     listModules,
     prepareModule,
     proposeModuleSchema,
     selectModule,
     setModuleState,
 } from '../../lib/modules.js'
-import { readWorkspaceFile } from '../../lib/chatTools.js'
+import { moduleBufferConflicts } from '../../lib/moduleSource.js'
 import ContactInbox from './ContactInbox.jsx'
 import NewsDesk from './NewsDesk.jsx'
 import { CatalogDesk, OrdersDesk, PromptPaySettingsDesk } from './CommerceDesk.jsx'
@@ -30,21 +33,30 @@ const statusText = {
     ready: 'พร้อมใช้งาน (Ready)',
     failed: 'ติดตั้งไม่สำเร็จ',
 }
+const schemaReady = module => module?.installation?.status === 'ready' && module.installation.schema_version === module.schema_version
 
 const TAB_OPTIONS = [
-    { id: 'catalog', label: '📦 จัดการสินค้า', moduleKey: 'catalog' },
-    { id: 'orders', label: '🛒 คำสั่งซื้อ & ตรวจสลิป', moduleKey: 'orders' },
-    { id: 'promptpay', label: '💳 บัญชี PromptPay', moduleKey: 'manual_payments' },
-    { id: 'news', label: '📰 ข่าวสาร & บทความ', moduleKey: 'news' },
-    { id: 'contact', label: '✉️ ข้อความติดต่อ', moduleKey: 'contact' },
-    { id: 'overview', label: '⚙️ ระบบ & Schema', moduleKey: null },
+    { id: 'catalog', label: 'จัดการสินค้า', icon: Package, moduleKey: 'catalog' },
+    { id: 'orders', label: 'คำสั่งซื้อและสลิป', icon: ReceiptText, moduleKey: 'orders' },
+    { id: 'promptpay', label: 'บัญชี PromptPay', icon: CreditCard, moduleKey: 'manual_payments' },
+    { id: 'news', label: 'ข่าวสารและบทความ', icon: Newspaper, moduleKey: 'news' },
+    { id: 'contact', label: 'ข้อความติดต่อ', icon: Inbox, moduleKey: 'contact' },
+    { id: 'overview', label: 'ระบบและฐานข้อมูล', icon: Settings2, moduleKey: null },
 ]
 
 export default function ModulesDesk({ projectUuid, vfsContents = {} }) {
+    const currentBuffers = useRef(vfsContents)
+    currentBuffers.current = vfsContents
     const [data, setData] = useState(null)
     const [activeTab, setActiveTab] = useState('catalog')
     const [busy, setBusy] = useState(false)
     const [error, setError] = useState('')
+    useEffect(() => {
+        const conflict = event => { if (event.detail?.projectUuid === projectUuid) setError('ไฟล์ใน editor เปลี่ยนระหว่างติดตั้ง จึงเก็บ draft เดิมไว้ กรุณาตรวจไฟล์และโหลด widget รุ่นล่าสุดก่อน build') }
+        if (typeof window === 'undefined') return undefined
+        window.addEventListener('krikkit-module-files-conflict', conflict)
+        return () => window.removeEventListener('krikkit-module-files-conflict', conflict)
+    }, [projectUuid])
     const [notice, setNotice] = useState('')
     const [proposal, setProposal] = useState(null)
     const running = useRef(false)
@@ -122,36 +134,38 @@ export default function ModulesDesk({ projectUuid, vfsContents = {} }) {
 
     const embed = (module, route = '/') =>
         act(async () => {
-            const { full } = await readWorkspaceFile({
-                projectUuid,
-                contents: vfsContents,
-                path: 'src/App.jsx',
-            })
-            const hash = [
-                ...new Uint8Array(
-                    await crypto.subtle.digest('SHA-256', new TextEncoder().encode(full))
-                ),
-            ]
-                .map((byte) => byte.toString(16).padStart(2, '0'))
-                .join('')
-            const result = await embedModule(projectUuid, module.uuid, route, hash)
+            const plan = await moduleEmbedPlan(projectUuid, module.uuid, route)
+            const snapshot = { ...currentBuffers.current }
+            const conflicts = await moduleBufferConflicts(snapshot, plan.expected_files)
+            for (const path of Object.keys(plan.expected_files)) if (snapshot[path] !== currentBuffers.current[path] && !conflicts.includes(path)) conflicts.push(path)
+            if (conflicts.length) throw new Error(`มีไฟล์ที่ยังไม่บันทึกหรือเปลี่ยนระหว่างตรวจ กรุณาจัดการก่อนติดตั้ง widget: ${conflicts.join(', ')}`)
+            const result = await embedModule(projectUuid, module.uuid, route, plan.expected_files['src/App.jsx'], plan.expected_files, plan.impact_hash)
             window.dispatchEvent(
                 new CustomEvent('krikkit-module-files-installed', {
-                    detail: { projectUuid, files: result.files },
+                    detail: { projectUuid, files: result.files, expectedFiles: result.expected_files },
                 })
             )
             setNotice(`เพิ่ม ${titles[module.key] || module.key} ในหน้า ${route} แล้ว`)
         })
 
-    const autoSetupAll = async () => {
+    const prepareNextModule = async () => {
         if (running.current) return
         running.current = true
         setBusy(true)
         setError('')
-        setNotice('กำลังติดตั้งและเปิดใช้งานระบบหลังบ้านทั้งหมด (สินค้า, ตรวจสลิป, PromptPay, ข่าวสาร, ฟอร์มติดต่อ)...')
+        setNotice('กำลังเตรียมโมดูลถัดไปสำหรับตรวจ schema ก่อน Apply')
         try {
             let current = data || (await listModules(projectUuid))
-            const keys = ['contact', 'news', 'catalog', 'orders', 'manual_payments']
+            const target = TAB_OPTIONS.find(tab => tab.id === activeTab)?.moduleKey
+            const keys = []
+            const visit = key => {
+                if (keys.includes(key)) return
+                const module = current.modules.find(item => item.key === key)
+                for (const dependency of module?.dependencies || []) visit(dependency)
+                keys.push(key)
+            }
+            const roots = target ? [target] : ['contact', 'news', 'catalog', 'orders', 'manual_payments'].filter(key => current.modules.find(module => module.key === key)?.entitled)
+            roots.forEach(visit)
             for (const key of keys) {
                 let mod = current.modules.find((m) => m.key === key)
                 if (! mod) continue
@@ -170,30 +184,24 @@ export default function ModulesDesk({ projectUuid, vfsContents = {} }) {
                     current = await listModules(projectUuid)
                     mod = current.modules.find((m) => m.key === key)
                 }
-                if (mod.installation && mod.installation.status !== 'ready') {
+                if (mod.installation && !schemaReady(mod)) {
                     const { proposal: p } = await proposeModuleSchema(
                         projectUuid,
                         mod.installation.uuid,
                         mod.installation.revision
                     )
-                    await applyModuleProposal(projectUuid, p)
-                    current = await listModules(projectUuid)
-                    mod = current.modules.find((m) => m.key === key)
-                }
-                if (mod.installation && ! mod.installation.enabled) {
-                    await setModuleState(
-                        projectUuid,
-                        mod.installation.uuid,
-                        'enabled',
-                        mod.installation.revision
-                    )
-                    current = await listModules(projectUuid)
+                    setProposal(p)
+                    setData(current)
+                    setActiveTab('overview')
+                    setNotice('ตรวจฐานข้อมูลและ SQL ด้านล่างก่อนกด Apply การเตรียมยังไม่เปลี่ยน schema')
+                    return
                 }
             }
             setData(current)
-            setNotice('✅ ติดตั้งและเปิดใช้งานระบบหลังบ้าน (สินค้า, ข่าวสาร, PromptPay, ตรวจสลิป, ฟอร์มติดต่อ) สำเร็จเรียบร้อยแล้ว!')
+            setActiveTab('overview')
+            setNotice('schema ของโมดูลที่รองรับพร้อมแล้ว เลือกเปิดใช้งานแต่ละโมดูลเมื่อพร้อมรับข้อมูลจริง')
         } catch (err) {
-            setError(err?.message || 'ติดตั้งอัตโนมัติไม่สำเร็จ กรุณาลองใหม่อีกครั้ง')
+            setError(err?.message || 'เตรียมโมดูลไม่สำเร็จ กรุณาลองใหม่อีกครั้ง')
         } finally {
             running.current = false
             setBusy(false)
@@ -208,43 +216,44 @@ export default function ModulesDesk({ projectUuid, vfsContents = {} }) {
     const newsMod = data?.modules?.find((m) => m.key === 'news')
     const contactMod = data?.modules?.find((m) => m.key === 'contact')
 
-    const catalogReady = catalogMod?.installation?.status === 'ready'
-    const ordersReady = ordersMod?.installation?.status === 'ready'
-    const manualPaymentsReady = manualPaymentsMod?.installation?.status === 'ready'
-    const newsReady = newsMod?.installation?.status === 'ready'
-    const contactReady = contactMod?.installation?.status === 'ready'
+    const catalogReady = schemaReady(catalogMod)
+    const ordersReady = schemaReady(ordersMod)
+    const manualPaymentsReady = schemaReady(manualPaymentsMod)
+    const newsReady = schemaReady(newsMod)
+    const contactReady = schemaReady(contactMod)
 
     const allReady = catalogReady && ordersReady && manualPaymentsReady && newsReady && contactReady
     const writable = Boolean(data?.business_writes_ready)
 
     return (
-        <section className="flex h-full flex-col overflow-hidden bg-krikkit-canvas" aria-label="Owner Back-office">
+        <section className="studio-owner-container" aria-label="Owner Back-office">
+        <div className="studio-modules">
             {/* Header & Sub-Navigation */}
-            <div className="shrink-0 border-b border-krikkit-line bg-krikkit-surface px-6 pt-4">
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <div className="studio-module-header">
+                <div className="studio-module-heading">
                     <div>
                         <h1 className="text-lg font-bold text-krikkit-fg">
-                            🏢 ระบบหลังบ้าน (Owner Back-Office)
+                            ระบบหลังบ้าน
                         </h1>
                         <p className="text-xs text-krikkit-muted">
                             จัดการสินค้า คำสั่งซื้อ ตรวจสอบสลิปเงิน ตั้งค่า PromptPay ข่าวสาร และฟอร์มติดต่อ
                         </p>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="studio-module-actions">
                         <a
                             href={`/lab/builder?project=${encodeURIComponent(projectUuid)}`}
                             className="inline-flex items-center gap-1 rounded-lg border border-krikkit-accent bg-krikkit-soft px-3 py-1.5 text-xs font-semibold text-krikkit-accent transition hover:bg-krikkit-accent hover:text-white"
                         >
-                            ✏️ แก้ไขหน้าเว็บ (Studio Builder)
+                            <ArrowUpRight size={15} aria-hidden="true" /> แก้ไขหน้าเว็บ
                         </a>
                         {! allReady && (
                             <button
                                 type="button"
                                 disabled={busy}
-                                onClick={autoSetupAll}
+                                onClick={prepareNextModule}
                                 className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold ${LAB_BTN_PRIMARY}`}
                             >
-                                ⚡ ติดตั้งระบบหลังบ้านทั้งหมด
+                                เตรียมโมดูลถัดไปเพื่อตรวจ schema
                             </button>
                         )}
                         <button
@@ -253,36 +262,34 @@ export default function ModulesDesk({ projectUuid, vfsContents = {} }) {
                             className={`rounded-lg px-3 py-1.5 text-xs ${LAB_BTN_OUTLINE}`}
                             onClick={() => act()}
                         >
-                            ↻ โหลดล่าสุด
+                            <RefreshCw size={14} aria-hidden="true" className="inline-block mr-1.5" /> โหลดล่าสุด
                         </button>
                     </div>
                 </div>
 
-                {/* Tabs */}
-                <div className="flex flex-wrap gap-1">
+            </div>
+                <nav className="studio-module-nav" aria-label="เมนูจัดการเว็บไซต์">
+                    <div className="studio-module-brand"><img src="/brand/createai-logo.jpg" alt="CreateAI" width="199" height="66" /></div>
+                    <p>จัดการเว็บไซต์ของคุณ</p>
                     {TAB_OPTIONS.map((t) => {
                         const active = activeTab === t.id
+                        const Icon = t.icon
                         return (
                             <button
                                 key={t.id}
                                 type="button"
                                 onClick={() => setActiveTab(t.id)}
-                                className={[
-                                    'border-b-2 px-3 py-2 text-xs font-semibold transition',
-                                    active
-                                        ? 'border-krikkit-accent text-krikkit-accent'
-                                        : 'border-transparent text-krikkit-muted hover:text-krikkit-fg',
-                                ].join(' ')}
+                                aria-current={active ? 'page' : undefined}
                             >
+                                <Icon aria-hidden="true" />
                                 {t.label}
                             </button>
                         )
                     })}
-                </div>
-            </div>
+                </nav>
 
             {/* Content Body */}
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className="studio-module-content">
                 {! data && ! error ? <p role="status">กำลังโหลดข้อมูลระบบหลังบ้าน…</p> : null}
                 {error ? <p role="alert" className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
                 {notice ? <p role="status" className="mb-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800">{notice}</p> : null}
@@ -292,7 +299,8 @@ export default function ModulesDesk({ projectUuid, vfsContents = {} }) {
                     <section className="mb-5 rounded-xl border border-krikkit-line bg-krikkit-surface p-4" aria-label="ตรวจ schema ก่อน Apply">
                         <h2 className="font-semibold text-krikkit-fg">ตรวจการติดตั้ง {titles[proposal.impact.key]}</h2>
                         <p className="mt-1 text-xs text-krikkit-muted">Supabase: {proposal.impact.project_ref} · schema รุ่น {proposal.impact.schema_version}</p>
-                        <p className="mt-2 text-xs">คำขอนี้เพิ่มตารางและ RPC สำหรับโมดูล รวมถึงปิดสิทธิ์อ่านข้อมูลโดยตรงจาก browser การ Apply จะเปลี่ยนฐานข้อมูลที่ระบุด้านบน และยังไม่เปิดรับข้อมูลลูกค้า</p>
+                        {proposal.impact.key === 'manual_payments' ? <p className="mt-2 text-xs">รวมการสร้าง bucket สลิปส่วนตัวของโมดูล และ policy ป้องกันการอ่าน/เขียนไฟล์โดยตรงจาก browser จะไม่ยึด bucket เดิมที่ไม่ใช่ของโมดูลนี้</p> : null}
+                        <p className="mt-2 text-xs">คำขอนี้เพิ่มตารางและ RPC สำหรับโมดูล รวมถึงปิดสิทธิ์อ่านข้อมูลโดยตรงจาก browser การ Apply จะเปลี่ยนฐานข้อมูลที่ระบุด้านบน และปิดรับข้อมูลใหม่จนกว่าจะเลือกเปิดใช้งานโมดูลอีกครั้ง</p>
                         <details className="mt-3">
                             <summary className="cursor-pointer text-xs font-medium text-krikkit-accent">ดู SQL ที่จะใช้</summary>
                             <pre className="mt-2 max-h-60 overflow-auto rounded bg-krikkit-canvas p-2 text-[11px]">{proposal.sql}</pre>
@@ -309,7 +317,7 @@ export default function ModulesDesk({ projectUuid, vfsContents = {} }) {
                     <div>
                         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                             <div>
-                                <h2 className="text-base font-semibold text-krikkit-fg">📦 จัดการสินค้าและราคา</h2>
+                                <h2 className="text-base font-semibold text-krikkit-fg">จัดการสินค้าและราคา</h2>
                                 <p className="text-xs text-krikkit-muted">เพิ่มสินค้า แก้ไขชื่อ รายละเอียด ราคาบาท และเปิด/ปิดการจำหน่าย</p>
                             </div>
                             {catalogReady && (
@@ -336,10 +344,10 @@ export default function ModulesDesk({ projectUuid, vfsContents = {} }) {
                                 <button
                                     type="button"
                                     disabled={busy}
-                                    onClick={autoSetupAll}
+                                    onClick={prepareNextModule}
                                     className={`rounded-lg px-4 py-2 text-xs font-semibold ${LAB_BTN_PRIMARY}`}
                                 >
-                                    ⚡ ติดตั้งและเปิดใช้งานโมดูลสินค้าเดี๋ยวนี้
+                                    เตรียมโมดูลและตรวจ schema
                                 </button>
                             </div>
                         )}
@@ -351,7 +359,7 @@ export default function ModulesDesk({ projectUuid, vfsContents = {} }) {
                     <div>
                         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                             <div>
-                                <h2 className="text-base font-semibold text-krikkit-fg">🛒 รายการคำสั่งซื้อและตรวจสลิป</h2>
+                                <h2 className="text-base font-semibold text-krikkit-fg">รายการคำสั่งซื้อและตรวจสลิป</h2>
                                 <p className="text-xs text-krikkit-muted">ตรวจดูคำสั่งซื้อของลูกค้า ยอดเงิน สินค้าที่สั่ง และตรวจสลิปโอนเงิน PromptPay</p>
                             </div>
                             {ordersReady && (
@@ -379,10 +387,10 @@ export default function ModulesDesk({ projectUuid, vfsContents = {} }) {
                                 <button
                                     type="button"
                                     disabled={busy}
-                                    onClick={autoSetupAll}
+                                    onClick={prepareNextModule}
                                     className={`rounded-lg px-4 py-2 text-xs font-semibold ${LAB_BTN_PRIMARY}`}
                                 >
-                                    ⚡ ติดตั้งและเปิดใช้งานระบบคำสั่งซื้อ
+                                    เตรียมโมดูลและตรวจ schema
                                 </button>
                             </div>
                         )}
@@ -394,7 +402,7 @@ export default function ModulesDesk({ projectUuid, vfsContents = {} }) {
                     <div>
                         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                             <div>
-                                <h2 className="text-base font-semibold text-krikkit-fg">💳 ตั้งค่าการรับเงิน PromptPay</h2>
+                                <h2 className="text-base font-semibold text-krikkit-fg">ตั้งค่าการรับเงิน PromptPay</h2>
                                 <p className="text-xs text-krikkit-muted">กำหนดเบอร์โทรศัพท์/เลขประจำตัวผู้เสียภาษี และชื่อบัญชีสำหรับสร้าง QR ให้ลูกค้าสแกนจ่าย</p>
                             </div>
                             {manualPaymentsReady && (
@@ -421,10 +429,10 @@ export default function ModulesDesk({ projectUuid, vfsContents = {} }) {
                                 <button
                                     type="button"
                                     disabled={busy}
-                                    onClick={autoSetupAll}
+                                    onClick={prepareNextModule}
                                     className={`rounded-lg px-4 py-2 text-xs font-semibold ${LAB_BTN_PRIMARY}`}
                                 >
-                                    ⚡ ติดตั้งและเปิดใช้งานระบบชำระเงิน PromptPay
+                                    เตรียมโมดูลและตรวจ schema
                                 </button>
                             </div>
                         )}
@@ -436,7 +444,7 @@ export default function ModulesDesk({ projectUuid, vfsContents = {} }) {
                     <div>
                         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                             <div>
-                                <h2 className="text-base font-semibold text-krikkit-fg">📰 จัดการข่าวสารและบทความ</h2>
+                                <h2 className="text-base font-semibold text-krikkit-fg">จัดการข่าวสารและบทความ</h2>
                                 <p className="text-xs text-krikkit-muted">เพิ่มข่าวใหม่ แก้ไขบทความ และปรับสถานะเผยแพร่ (Draft / Published)</p>
                             </div>
                             {newsReady && (
@@ -463,10 +471,10 @@ export default function ModulesDesk({ projectUuid, vfsContents = {} }) {
                                 <button
                                     type="button"
                                     disabled={busy}
-                                    onClick={autoSetupAll}
+                                    onClick={prepareNextModule}
                                     className={`rounded-lg px-4 py-2 text-xs font-semibold ${LAB_BTN_PRIMARY}`}
                                 >
-                                    ⚡ ติดตั้งและเปิดใช้งานโมดูลข่าวสาร
+                                    เตรียมโมดูลและตรวจ schema
                                 </button>
                             </div>
                         )}
@@ -478,7 +486,7 @@ export default function ModulesDesk({ projectUuid, vfsContents = {} }) {
                     <div>
                         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                             <div>
-                                <h2 className="text-base font-semibold text-krikkit-fg">✉️ กล่องข้อความจากผู้ติดต่อ</h2>
+                                <h2 className="text-base font-semibold text-krikkit-fg">กล่องข้อความจากผู้ติดต่อ</h2>
                                 <p className="text-xs text-krikkit-muted">ตรวจสอบข้อความที่ลูกค้าส่งผ่านฟอร์มหน้าเว็บ</p>
                             </div>
                             {contactReady && (
@@ -505,10 +513,10 @@ export default function ModulesDesk({ projectUuid, vfsContents = {} }) {
                                 <button
                                     type="button"
                                     disabled={busy}
-                                    onClick={autoSetupAll}
+                                    onClick={prepareNextModule}
                                     className={`rounded-lg px-4 py-2 text-xs font-semibold ${LAB_BTN_PRIMARY}`}
                                 >
-                                    ⚡ ติดตั้งและเปิดใช้งานฟอร์มติดต่อ
+                                    เตรียมโมดูลและตรวจ schema
                                 </button>
                             </div>
                         )}
@@ -519,7 +527,7 @@ export default function ModulesDesk({ projectUuid, vfsContents = {} }) {
                 {activeTab === 'overview' && (
                     <div className="space-y-4">
                         <div className="mb-2">
-                            <h2 className="text-base font-semibold text-krikkit-fg">⚙️ ภาพรวมโมดูลและการเชื่อมต่อฐานข้อมูล</h2>
+                            <h2 className="text-base font-semibold text-krikkit-fg">ภาพรวมโมดูลและการเชื่อมต่อฐานข้อมูล</h2>
                             <p className="text-xs text-krikkit-muted">เปิด/ปิดสิทธิ์โมดูล ตรวจสอบความปลอดภัยของ Schema และสิทธิ์ RPC ฝั่งฐานข้อมูล</p>
                         </div>
                         {data?.modules.map((module) => (
@@ -544,8 +552,7 @@ export default function ModulesDesk({ projectUuid, vfsContents = {} }) {
                                     <div className="mt-3 text-xs">
                                         <p className="text-krikkit-muted">Supabase: {module.installation.project_ref} · รุ่น {module.installation.revision}</p>
                                         <div className="mt-2 flex flex-wrap gap-2">
-                                            {['contact', 'news', 'catalog', 'orders', 'manual_payments'].includes(module.key) &&
-                                                module.installation.status !== 'ready' && (
+                                            {['contact', 'news', 'catalog', 'orders', 'manual_payments'].includes(module.key) && (
                                                     <button
                                                         disabled={busy || ! module.selected || ! module.entitled}
                                                         className={`rounded-lg px-2.5 py-1 text-xs ${LAB_BTN_OUTLINE}`}
@@ -560,10 +567,10 @@ export default function ModulesDesk({ projectUuid, vfsContents = {} }) {
                                                             })
                                                         }
                                                     >
-                                                        ตรวจ schema ก่อนติดตั้ง
+                                                        {module.installation.status === 'ready' ? 'ตรวจ schema อีกครั้ง' : 'ตรวจ schema ก่อนติดตั้ง'}
                                                     </button>
                                                 )}
-                                            {module.installation.status === 'ready' && (
+                                    {schemaReady(module) && (
                                                 <button
                                                     disabled={busy || (! module.installation.enabled && (! data.business_writes_ready || ! module.selected || ! module.entitled))}
                                                     className={`rounded-lg px-2.5 py-1 text-xs ${LAB_BTN_OUTLINE}`}
@@ -597,6 +604,7 @@ export default function ModulesDesk({ projectUuid, vfsContents = {} }) {
                     </div>
                 )}
             </div>
+        </div>
         </section>
     )
 }

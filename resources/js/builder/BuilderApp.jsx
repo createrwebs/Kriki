@@ -581,7 +581,7 @@ export function BuilderApp({ bootstrap }) {
     <div className="builder-app">
       <header className="builder-header">
         <a href="/lab" className="builder-brand">
-          krikkit<span>Design workspace</span>
+          <img src="/brand/createai-logo.jpg" alt="CreateAI" width="199" height="66" /><span>Design workspace</span>
         </a>
         <div className="builder-header-actions">
           <span className="builder-save-state" role="status">
@@ -658,7 +658,8 @@ export function BuilderApp({ bootstrap }) {
         <p className="builder-disclosure">
           Save your design, then create a real React website project to build and
           preview in Lab. Creating a project uses your existing project quota.
-          AI planning and data widgets are not connected here yet. Publishing is separate.
+          Connect contact, news and store widgets in the Lab setup desk after creating
+          the project. Review database changes before applying them. Publishing is separate.
         </p>
         {blueprint ? (
           <div className="builder-row-actions" style={{ flexWrap: "wrap", gap: "8px" }}>
@@ -670,6 +671,7 @@ export function BuilderApp({ bootstrap }) {
             {createdProject ? (
               <>
                 <a href={`/lab/${createdProject.uuid}/workspace`}>Open website workspace · draft revision {createdProject.revision}</a>
+                <a href={`/lab/${createdProject.uuid}/workspace?panel=modules`}>ตั้งค่าข้อมูลและ widget</a>
                 <button
                   type="button"
                   className="builder-danger"

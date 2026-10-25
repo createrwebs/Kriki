@@ -1,0 +1,36 @@
+$kind: http-request
+description: Idempotent owner revocation; records actor/time without changing payment state. Available after disable, downgrade or freeze. Module must be orders.
+url: "{{baseUrl}}/lab/:project/modules/:module/orders/:order/revoke-access"
+method: POST
+headers:
+  - key: Cookie
+    value: "{{ownerCookieName}}={{ownerSession}}"
+  - key: X-CSRF-TOKEN
+    value: "{{csrfToken}}"
+    disabled: false
+    description: "(Required) "
+  - key: Content-Type
+    value: application/json
+  - key: Accept
+    value: application/json
+pathVariables:
+  - key: project
+    value: 00e8fb67-cb47-af7c-eaf8-912a9d45e117
+    disabled: false
+    description: "(Required) "
+  - key: module
+    value: 00e8fb67-cb47-af7c-eaf8-912a9d45e117
+    disabled: false
+    description: "(Required) "
+  - key: order
+    value: 00e8fb67-cb47-af7c-eaf8-912a9d45e117
+    disabled: false
+    description: "(Required) "
+body:
+  type: json
+  content: "{}"
+auth:
+  type: noauth
+settings: {}
+examples: ./.resources/revoke Guest Order Access.resources/examples
+order: 2000

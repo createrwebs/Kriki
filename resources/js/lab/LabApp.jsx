@@ -306,8 +306,18 @@ export function LabApp({ initialProject = null, initialWorkspace = false } = {})
     useEffect(() => {
         setFormProposal(null)
         const proposal = event => { if (event.detail?.projectUuid === projectUuid) setFormProposal(event.detail) }
-        const installed = event => {
-            if (event.detail?.projectUuid === projectUuid) vfs.applyVfsBatch(event.detail.files, { persist: false, asDraft: false })
+        const installed = async event => {
+            if (event.detail?.projectUuid !== projectUuid) return
+            if (!event.detail.expectedFiles) { vfs.applyVfsBatch(event.detail.files, { persist: false, asDraft: false }); return }
+            const { moduleBufferConflicts } = await import('./lib/moduleSource.js')
+            const before = { ...vfs.vfsContentsRef.current, ...vfs.draftBuffersRef.current }
+            const conflicts = await moduleBufferConflicts(before, event.detail.expectedFiles)
+            const latest = { ...vfs.vfsContentsRef.current, ...vfs.draftBuffersRef.current }
+            if (conflicts.length || Object.keys(event.detail.expectedFiles).some(path => latest[path] !== before[path])) {
+                window.dispatchEvent(new CustomEvent('krikkit-module-files-conflict', { detail: { projectUuid } }))
+                return
+            }
+            vfs.applyVfsBatch(event.detail.files, { persist: false, asDraft: false, clearDrafts: true })
         }
         window.addEventListener('krikkit-form-proposal', proposal)
         window.addEventListener('krikkit-form-files-installed', installed)
@@ -807,7 +817,7 @@ export function LabApp({ initialProject = null, initialWorkspace = false } = {})
     }, [inspectedElement])
 
     return (
-        <div className="flex h-dvh flex-col overflow-hidden bg-krikkit-canvas">
+        <div className="studio-lab flex h-dvh flex-col overflow-hidden bg-krikkit-canvas">
             {formProposal ? <Suspense fallback={null}><FormProposalCard key={`${formProposal.form_uuid}-${formProposal.base_version}`} proposal={formProposal} onClose={() => setFormProposal(null)} /></Suspense> : null}
             <LabHeader
                 building={building}

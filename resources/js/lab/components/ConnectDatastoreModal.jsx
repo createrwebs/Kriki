@@ -48,7 +48,7 @@ function UnlinkedScreen({
         ? 'Lab is reading the workspace OAuth app.'
         : (! oauthReady
             ? 'An admin adds the OAuth app under Dashboard → API Integration → Supabase. After that, you can connect an organization from here.'
-            : 'Continue to Supabase to authorize Lab. You will come back here to pick a project — chat can survey tables and apply SQL. Keys stay on the server.')
+            : 'Continue to Supabase to authorize Lab, then select the account connection. Chat sees only the current Lab project module registrations. Schema changes require a proposal and owner Apply. Keys stay on the server.')
 
     return (
         <div className="flex flex-col items-center px-6 py-10 text-center">
@@ -87,8 +87,8 @@ function statusCopy(status, waitMode) {
     if (status.ready) {
         const name = status.project_name || status.project_ref
         return name
-            ? `${name} is attached. Chat tools can survey and revise this project.`
-            : 'A project is attached. Chat tools can survey and revise it.'
+            ? `${name} is attached to your account. Existing modules keep their original database binding; inspect them in the current Lab project.`
+            : 'An account connection is attached. Inspect module registrations in the current Lab project; schema changes require owner Apply.'
     }
     if (status.linked) {
         return waitMode
@@ -151,6 +151,7 @@ export function ConnectDatastoreModal({
             setProjects([])
             return next
         }
+        setProjects([])
         const listed = await listLabDatastoreProjects()
         const rows = Array.isArray(listed.projects) ? listed.projects : []
         setProjects(rows)
@@ -212,7 +213,7 @@ export function ConnectDatastoreModal({
         setLoading(true)
         refresh()
             .catch((err) => {
-                if (! cancelled) failDeskPulse(err?.payload?.message || err?.message || 'Could not read datastore status.')
+                if (! cancelled) setError(err?.payload?.message || err?.message || 'Could not read datastore status.')
             })
             .finally(() => {
                 if (! cancelled) setLoading(false)
@@ -277,6 +278,18 @@ export function ConnectDatastoreModal({
         setError('')
         setLoading(true)
         redirectToSupabaseOauth(labReturnPath())
+    }
+
+    const retryProjects = async () => {
+        setError('')
+        setLoading(true)
+        try {
+            await refresh()
+        } catch (err) {
+            setError(err?.payload?.message || err?.message || 'Could not read datastore status.')
+        } finally {
+            setLoading(false)
+        }
     }
 
     const attach = async () => {
@@ -352,7 +365,7 @@ export function ConnectDatastoreModal({
                     <>
                         <div className="flex min-h-0 flex-1 flex-col">
                             {error ? (
-                                <p className="mx-5 mt-4 shrink-0 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-600 dark:text-red-400">
+                                <p role="alert" className="mx-5 mt-4 shrink-0 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-600 dark:text-red-400">
                                     {error}
                                 </p>
                             ) : null}
@@ -386,7 +399,7 @@ export function ConnectDatastoreModal({
                                 ) : visibleProjects.length === 0 ? (
                                     <p className="px-2 py-8 text-center text-sm text-krikkit-muted">
                                         {projects.length === 0
-                                            ? 'No projects came back for this organization. In the Supabase OAuth app, enable Projects read, then disconnect and connect again.'
+                                            ? (error ? 'Project list is unavailable. Retry or reconnect to Supabase.' : 'No projects were returned for this connection. Verify the account and project permissions, or reconnect.')
                                             : 'No matching projects.'}
                                     </p>
                                 ) : (
@@ -425,21 +438,33 @@ export function ConnectDatastoreModal({
                             </div>
                         </div>
 
-                        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-krikkit-line px-5 py-3">
+                        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-krikkit-line px-5 py-3">
+                            {status.oauth_ready ? (
+                                <button type="button" disabled={loading || saving} onClick={connect}
+                                    className={`inline-flex h-10 items-center justify-center rounded-full px-4 text-sm font-medium ${LAB_BTN_OUTLINE}`}>
+                                    Reconnect Supabase
+                                </button>
+                            ) : null}
+                            {error ? (
+                                <button type="button" disabled={loading || saving} onClick={retryProjects}
+                                    className={`inline-flex h-10 items-center justify-center rounded-full px-4 text-sm font-medium ${LAB_BTN_OUTLINE}`}>
+                                    Retry
+                                </button>
+                            ) : null}
                             <button
                                 type="button"
-                                disabled={saving || loading || projectRef === '' || projectRef === status.project_ref}
+                                disabled={saving || loading || !projects.some(row => row.ref === projectRef)}
                                 onClick={attach}
                                 className={`inline-flex h-10 items-center justify-center rounded-full px-4 text-sm font-medium ${LAB_BTN_PRIMARY}`}
                             >
-                                {saving ? 'Attaching…' : (status.ready ? 'Switch project' : 'Attach project')}
+                                {saving ? 'Attaching…' : (status.ready ? (projectRef === status.project_ref ? 'Refresh connection' : 'Switch project') : 'Attach project')}
                             </button>
                         </div>
                     </>
                 ) : (
                     <div>
                         {error ? (
-                            <p className="mx-5 mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-600 dark:text-red-400">
+                            <p role="alert" className="mx-5 mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-600 dark:text-red-400">
                                 {error}
                             </p>
                         ) : null}

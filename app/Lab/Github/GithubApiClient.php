@@ -169,6 +169,7 @@ final class GithubApiClient
     public function resolveCommitSha(string $owner, string $repo, ?string $ref = null, ?string $accessToken = null): string
     {
         $ref = trim((string) $ref);
+        if (preg_match('/^[a-f0-9]{40}$/iD', $ref) === 1) return strtolower($ref);
         if ($ref === '') {
             $ref = $this->defaultBranch($owner, $repo, $accessToken);
         }
@@ -187,11 +188,11 @@ final class GithubApiClient
         /** @var array<string, mixed> $data */
         $data = $response->json() ?? [];
         $sha = trim((string) ($data['sha'] ?? ''));
-        if ($sha === '') {
+        if (preg_match('/^[a-f0-9]{40}$/iD', $sha) !== 1) {
             throw new RuntimeException(__('dashboard.Could not download the GitHub repository archive.'));
         }
 
-        return $sha;
+        return strtolower($sha);
     }
 
     public function defaultBranch(string $owner, string $repo, ?string $accessToken = null): string
@@ -214,7 +215,7 @@ final class GithubApiClient
     }
 
     /**
-     * @return list<array{path: string, type: string, sha: string, size?: int}>
+     * @return list<array{path: string, type: string, mode: string, sha: string, size?: int}>
      */
     public function fetchRecursiveTree(string $owner, string $repo, string $commitSha, ?string $accessToken = null): array
     {
@@ -231,26 +232,28 @@ final class GithubApiClient
 
         /** @var array<string, mixed> $data */
         $data = $response->json() ?? [];
-        $tree = $data['tree'] ?? [];
-        if (! is_array($tree)) {
-            return [];
-        }
+        if (!is_array($data) || ($data['truncated'] ?? null) !== false) throw new RuntimeException('GitHub returned a truncated or incomplete tree. A complete tree is required before importing; no source was changed.');
+        $tree = $data['tree'] ?? null;
+        if (!is_array($tree) || !array_is_list($tree)) throw new RuntimeException('GitHub returned invalid source tree metadata. No source was changed.');
 
         $out = [];
         foreach ($tree as $entry) {
-            if (! is_array($entry)) {
-                continue;
+            if (!is_array($entry)) throw new RuntimeException('GitHub returned an invalid source tree entry.');
+            foreach (['path', 'type', 'sha', 'mode'] as $field) {
+                if (!is_string($entry[$field] ?? null)) throw new RuntimeException('GitHub returned incomplete source identity metadata.');
             }
             $path = (string) ($entry['path'] ?? '');
             $type = (string) ($entry['type'] ?? '');
             $sha = (string) ($entry['sha'] ?? '');
-            if ($path === '' || $sha === '') {
-                continue;
-            }
+            $mode = $entry['mode'] ?? '';
+            $validMode = match ($type) { 'blob' => in_array($mode, ['100644','100755','120000'], true), 'tree' => $mode === '040000', 'commit' => $mode === '160000', default => false };
+            if ($path === '' || preg_match('/^[a-f0-9]{40}$/iD', $sha) !== 1 || !$validMode
+                || ($type === 'blob' && (!is_int($entry['size'] ?? null) || $entry['size'] < 0))) throw new RuntimeException('GitHub returned incomplete source identity, type or size metadata.');
             $row = [
                 'path' => $path,
                 'type' => $type,
-                'sha' => $sha,
+                'mode' => $mode,
+                'sha' => strtolower($sha),
             ];
             if (isset($entry['size'])) {
                 $row['size'] = (int) $entry['size'];

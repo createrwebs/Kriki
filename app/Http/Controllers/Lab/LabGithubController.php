@@ -186,14 +186,14 @@ class LabGithubController extends Controller
         $firstPrompt = filled($validated['first_prompt'] ?? null) ? trim((string) $validated['first_prompt']) : null;
 
         $entitlements->assertFeature($user, EntitlementCatalog::GITHUB_IMPORT);
-
+        $lease = null; $importSucceeded = false;
         try {
             $project = $this->resolveProject(
                 $user->id,
                 $validated['project_uuid'] ?? null,
                 $parsed['repo'],
             );
-            $workspace->resetForImport($project);
+            $lease = app(\App\Lab\Modules\OperationLimiter::class)->acquire($user, $project, 'import', (string) \Illuminate\Support\Str::uuid(), true);
             $result = $importer->import(
                 $project,
                 $parsed['owner'],
@@ -201,7 +201,12 @@ class LabGithubController extends Controller
                 $branch,
                 $fromPicker ? $accessToken : null,
                 $rootDirectory,
+                replaceWorkspace: true,
+                beforePromotion: fn () => app(\App\Lab\Modules\OperationLimiter::class)->assertImportPromotion($user, $project, $lease),
             );
+            $importSucceeded = true;
+        } catch (\Illuminate\Auth\Access\AuthorizationException|\Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e) {
+            throw $e;
         } catch (InvalidArgumentException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         } catch (RuntimeException $e) {
@@ -212,6 +217,8 @@ class LabGithubController extends Controller
             return response()->json([
                 'message' => __('dashboard.Could not import repository.'),
             ], 500);
+        } finally {
+            if ($lease !== null) app(\App\Lab\Modules\OperationLimiter::class)->finalize($user, $project, $lease, $importSucceeded);
         }
 
         $project = $project->fresh(['messages']);
@@ -221,7 +228,7 @@ class LabGithubController extends Controller
                 $project,
                 $result['owner'],
                 $result['repo'],
-                $branch ?: 'main',
+                $result['requested_ref'],
                 $result['root'] ?? $rootDirectory,
             );
             $project->load('githubRemote');
@@ -231,6 +238,7 @@ class LabGithubController extends Controller
 
         return response()->json([
             'imported' => true,
+            'commit_sha' => $result['commit_sha'],
             'message' => __('dashboard.Repository imported.'),
             'owner' => $result['owner'],
             'repo' => $result['repo'],

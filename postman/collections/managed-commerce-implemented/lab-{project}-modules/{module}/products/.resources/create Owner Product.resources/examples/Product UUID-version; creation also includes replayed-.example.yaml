@@ -1,0 +1,51 @@
+$kind: http-example
+name: Product UUID/version; creation also includes replayed.
+request:
+  url: "{{baseUrl}}/lab/:project/modules/:module/products"
+  method: POST
+  headers:
+    - key: laravel_session
+      value: <API Key>
+      description: "Added as a part of security scheme: apikey"
+    - key: X-CSRF-TOKEN
+      value: string
+      disabled: false
+      description: "(Required) "
+    - key: Accept
+      value: application/json
+  pathVariables:
+    - key: project
+      value: 34c9f942-d901-6272-1761-67c2ee5e8e3a
+      disabled: false
+      description: "(Required) "
+    - key: module
+      value: 34c9f942-d901-6272-1761-67c2ee5e8e3a
+      disabled: false
+      description: "(Required) "
+  body:
+    type: json
+    content: |-
+      {
+        "idempotency_key": "7f30708d-832f-df94-00cc-68dca4258fd1",
+        "sku": "ShALfG-EfxqRoLnNZe5-Ka",
+        "title": "string",
+        "price_satang": 45198790,
+        "description": "string",
+        "active": false
+      }
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "product": {
+          "product_uuid": "3398124b-390d-0b23-99d4-17d078a448d2",
+          "version": 7750,
+          "replayed": true
+        }
+      }
+order: 1000

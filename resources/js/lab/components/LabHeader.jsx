@@ -71,8 +71,8 @@ export function LabHeader({
                     ? { flex: `0 0 ${railW}px`, width: railW, maxWidth: railW }
                     : undefined}
             >
-                <a href="/" className="inline-flex h-5 items-center truncate text-sm font-semibold leading-none tracking-tight text-krikkit-fg">
-                    Krikkit
+                <a href="/" className="inline-flex shrink-0 items-center">
+                    <img src="/brand/createai-logo.jpg" alt="CreateAI" width="199" height="66" className="h-9 w-auto rounded-sm bg-white object-contain" />
                 </a>
                 <span className="mx-2 shrink-0 text-krikkit-subtle" aria-hidden>/</span>
                 <a

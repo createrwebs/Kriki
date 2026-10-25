@@ -159,63 +159,14 @@ export async function awaitLabDatastoreReady({ signal } = {}) {
 }
 
 /**
- * Server-side schema survey. Steward / management tokens never leave Laravel.
+ * Server-scoped module registration metadata. No remote-wide schema or credentials.
  *
- * @param {{ fresh?: boolean }} [input]
+ * @param {{ projectUuid: string, fresh?: boolean }} input
  */
 export async function surveyLabDatastore(input = {}) {
+    if (!input.projectUuid) throw new Error('Open a saved Lab project before inspecting its database.')
     return postDatastore('/lab/datastore/survey', {
+        project_uuid: input.projectUuid,
         fresh: Boolean(input.fresh),
-    })
-}
-
-export async function readLabDatastoreRows(table, limit = 50) {
-    const params = new URLSearchParams({
-        table: String(table || '').trim(),
-        limit: String(limit),
-    })
-    return requestDatastore(`/lab/datastore/rows?${params}`)
-}
-
-export async function readLabDatastoreAuth() {
-    return requestDatastore('/lab/datastore/auth')
-}
-
-export async function saveLabDatastoreAuth(patch) {
-    return requestDatastore('/lab/datastore/auth', { method: 'PATCH', body: patch })
-}
-
-export async function readLabDatastoreUsers(query = '') {
-    const params = new URLSearchParams()
-    if (String(query || '').trim()) params.set('q', String(query).trim())
-    const suffix = params.toString() ? `?${params}` : ''
-    return requestDatastore(`/lab/datastore/users${suffix}`)
-}
-
-export async function addLabDatastoreUser({ email, password = '', invite = false }) {
-    return requestDatastore('/lab/datastore/users', {
-        method: 'POST',
-        body: { email, password: password || null, invite: Boolean(invite) },
-    })
-}
-
-export async function restartLabDatastore() {
-    return requestDatastore('/lab/datastore/restart', { method: 'POST', body: {} })
-}
-
-export async function readLabDatastoreCatalog(topic) {
-    const params = new URLSearchParams({ topic: String(topic || '').trim() })
-    return requestDatastore(`/lab/datastore/catalog?${params}`)
-}
-
-/**
- * Apply fenced SQL on the workspace data plane.
- *
- * @param {{ sql: string, acknowledge_destructive?: boolean }} input
- */
-export async function reviseLabDatastore(input = {}) {
-    return postDatastore('/lab/datastore/revise', {
-        sql: String(input.sql || ''),
-        acknowledge_destructive: Boolean(input.acknowledge_destructive),
     })
 }

@@ -15,9 +15,9 @@ use Illuminate\Support\Facades\Storage;
 
 final class SiteSettings
 {
-    public const BUNDLED_LOGO_LIGHT = 'brand/logo-light.svg';
+    public const BUNDLED_LOGO_LIGHT = 'brand/createai-logo.jpg';
 
-    public const BUNDLED_LOGO_DARK = 'brand/logo-dark.svg';
+    public const BUNDLED_LOGO_DARK = 'brand/createai-logo.jpg';
 
     /**
      * @var array<string, mixed>|null

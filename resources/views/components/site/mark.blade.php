@@ -2,6 +2,8 @@
     $site = $site ?? app(\App\Support\Site\SiteSettings::class);
     $logoLight = $site->logoUrl('light');
     $logoDark = $site->logoUrl('dark');
+    $logoLightLabel = $logoLight === $site->bundledLogoUrl('light') ? 'CreateAI' : $site->name();
+    $logoDarkLabel = $logoDark === $site->bundledLogoUrl('dark') ? 'CreateAI' : $site->name();
     $iconLight = $site->iconUrl('light');
     $iconDark = $site->iconUrl('dark');
     $showLogo = $logoLight || $logoDark;
@@ -11,10 +13,10 @@
 @if ($showLogo)
     <span {{ $attributes->class('inline-flex items-center') }}>
         @if ($logoLight)
-            <img src="{{ $logoLight }}" alt="{{ $site->name() }}" class="h-8 max-w-40 object-contain dark:hidden">
+            <img src="{{ $logoLight }}" alt="{{ $logoLightLabel }}" class="h-12 max-w-40 rounded-sm bg-white object-contain dark:hidden">
         @endif
         @if ($logoDark || $logoLight)
-            <img src="{{ $logoDark ?? $logoLight }}" alt="{{ $site->name() }}" class="{{ $logoLight ? 'hidden dark:block' : '' }} h-8 max-w-40 object-contain">
+            <img src="{{ $logoDark ?? $logoLight }}" alt="{{ $logoDarkLabel }}" class="{{ $logoLight ? 'hidden dark:block' : '' }} h-12 max-w-40 rounded-sm bg-white object-contain">
         @endif
     </span>
 @elseif ($showIcon)

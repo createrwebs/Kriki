@@ -1,0 +1,5 @@
+simulation: builder-ai
+routing: path
+mocks:
+  - routeKey: ai
+    path: ../mocks/builder-ai/config.yaml

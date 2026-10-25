@@ -1,7 +1,8 @@
 <?php
 
-// End-to-End Full Flow Verification across all 5 user goals:
-// 1. Login & Registration (with Business Profile)
+// Service integration of builder/module business flow using a pre-created owner.
+// Authentication screens and browser production build require separate acceptance.
+// 1. Existing synthetic owner and pinned datastore
 // 2. Multi-page Website Builder Draft creation, page addition, detail editing before build
 // 3. Real Materialization & Build into Lab project workspace
 // 4. Widgets (Contact Form, News Feed, Storefront/Cart/Checkout, Custom Form Fields & AI Form Proposal)
@@ -51,7 +52,7 @@ try {
         'access_token' => 'fictional-management',
         'project_ref' => 'pglitefixture',
     ]);
-    formCheck($owner->id > 0 && $owner->email !== '', 'Step 1: Owner account authenticated and linked to pinned Supabase');
+    formCheck($owner->id > 0 && $owner->email !== '', 'Step 1: Synthetic owner exists and is linked to pinned Supabase');
 
     // STEP 2: Create Multi-page Website Builder Draft, Add Pages, and Edit Details Before Build
     $catalog = new TemplateCatalog();
@@ -220,6 +221,7 @@ try {
     // 5D. Customer places order, receives PromptPay QR, uploads slip -> Owner approves payment slip
     $orderCreated = $commerce->publicCreateOrder($installed['catalog'], [
         'idempotency_key' => (string) Str::uuid(),
+        'quote_uuid' => $commerce->publicQuote($installed['catalog'], ['items' => [['product_uuid' => $prod['product_uuid'], 'quantity' => 2]]])['quote']['quote_uuid'],
         'customer_name' => 'คุณพิมพ์ใจ รักกาแฟ',
         'customer_email' => 'pimjai@example.test',
         'customer_phone' => '0822223333',
@@ -234,7 +236,8 @@ try {
         'Step 5.4: Customer placed order (990.00 THB) and received PromptPay QR'
     );
 
-    $png1x1 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+    $fixtureImage = imagecreatetruecolor(10,10);
+    ob_start(); imagepng($fixtureImage); $png1x1 = 'data:image/png;base64,'.base64_encode(ob_get_clean()); imagedestroy($fixtureImage);
     $slipSubmitted = $commerce->publicSubmitSlip(
         $installed['catalog'],
         $orderCreated['order']['uuid'],
@@ -254,6 +257,7 @@ try {
     $reviewed = $commerce->reviewPaymentSlip($owner, $builtProject, $installed['manual_payments'], $slipSubmitted['slip']['uuid'], [
         'expected_version' => 1,
         'decision' => 'accepted',
+        'bank_verified' => true,
         'reason' => 'ตรวจสอบสลิป KBANK-990-THB เรียบร้อย',
     ])['review'];
     $customerCheck = $commerce->publicGetOrder($installed['catalog'], $orderCreated['order']['uuid'], $orderCreated['access_token'])['order'];
@@ -262,7 +266,7 @@ try {
         'Step 5.6: Owner verified customer payment slip in back-office and order transitioned to paid'
     );
 
-    formResult('full 5-step end-to-end Krikkit AI Website workflow');
+    formResult('builder materialization and managed widget service integration (synthetic owner; browser signup/build verified separately)');
 } finally {
     app()->useStoragePath($previousStorage);
 }

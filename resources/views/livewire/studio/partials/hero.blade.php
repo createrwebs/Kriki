@@ -1,5 +1,5 @@
-<section class="relative flex min-h-[calc(100dvh-3.5rem)] flex-col justify-center px-4 py-10 sm:px-6 lg:px-10">
-    <div class="relative mx-auto w-full max-w-3xl text-center">
+<section class="studio-home-hero relative flex flex-col px-4 py-10 sm:px-6 lg:px-10">
+    <div class="relative mx-auto w-full max-w-3xl">
         <h1 class="text-3xl font-semibold tracking-tight text-krikkit-fg sm:text-4xl">
             {{ __('studio.What will you build today?') }}
         </h1>

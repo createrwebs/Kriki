@@ -1,0 +1,4 @@
+workflows:
+  syncSpecToCollection:
+    - spec: ../docs/api/commerce.openapi.yaml
+      collection: ../postman/collections/managed-commerce-implemented

@@ -1,0 +1,27 @@
+$kind: http-request
+description: Latest100 orders and latest100 private attempts. Current response includes inline private image data; pagination/signed image viewer pending.
+url: "{{baseUrl}}/lab/:project/modules/:module/orders?status=pending_review"
+method: GET
+headers:
+  - key: Cookie
+    value: "{{ownerCookieName}}={{ownerSession}}"
+  - key: Cookie
+    value: "{{ownerCookieName}}={{ownerSession}}"
+  - key: Accept
+    value: application/json
+queryParams:
+  status: pending_review
+pathVariables:
+  - key: project
+    value: 1b92dfdd-62f5-daab-74f6-5c8599acb5ec
+    disabled: false
+    description: "(Required) "
+  - key: module
+    value: 1b92dfdd-62f5-daab-74f6-5c8599acb5ec
+    disabled: false
+    description: "(Required) "
+auth:
+  type: noauth
+settings: {}
+examples: ./.resources/list Owner Orders.resources/examples
+order: 3000

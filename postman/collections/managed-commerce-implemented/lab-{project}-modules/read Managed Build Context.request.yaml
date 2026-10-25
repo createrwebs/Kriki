@@ -1,0 +1,17 @@
+$kind: http-request
+description: Owner only, no query fields. Returns context:null for sites without managed widgets. Managed sites require authenticated SDK3 ownership manifest, unchanged managed SDK/config and current ready schemas in the original pinned datastore. Incompatible source or schema409. The guest builder verifies all source_files hashes before and after build. Promotion revalidates context and artifact file hashes; failure preserves the last-good deployment. No keys.
+url: "{{baseUrl}}/lab/:project/modules/build-context"
+method: GET
+headers:
+  Cookie: "{{ownerCookieName}}={{ownerSession}}"
+  Accept: application/json
+pathVariables:
+  - key: project
+    value: 34c9f942-d901-6272-1761-67c2ee5e8e3a
+    disabled: false
+    description: "(Required) "
+auth:
+  type: noauth
+settings: {}
+examples: ./.resources/read Managed Build Context.resources/examples
+order: 2000

@@ -105,7 +105,7 @@ export default function NewsDesk({ projectUuid, module, writable }) {
         }
     }
 
-    return <section className="mt-5 border-t border-krikkit-line pt-4" aria-label="จัดการข่าวสาร">
+    return <section className="studio-desk mt-5 border-t border-krikkit-line pt-4" aria-label="จัดการข่าวสาร">
         <div className="flex flex-wrap items-center justify-between gap-2">
             <h3 className="font-semibold">จัดการข่าวสารและบทความ</h3>
             <div className="flex gap-2">
@@ -116,6 +116,7 @@ export default function NewsDesk({ projectUuid, module, writable }) {
         {error ? <p role="alert" className="mt-3 text-sm text-red-600">{error}</p> : null}
         {notice ? <p role="status" className="mt-3 text-sm">{notice}</p> : null}
 
+        <div className="studio-desk-editor">
         <form onSubmit={save} className="mt-4 space-y-3 rounded-xl border border-krikkit-line p-3">
             <h4 className="font-medium">{editing ? `แก้ไขข่าว: ${editing.title} (รุ่น ${editing.version})` : 'เพิ่มข่าวสารใหม่'}</h4>
             <div className="grid gap-3 sm:grid-cols-2">
@@ -144,19 +145,21 @@ export default function NewsDesk({ projectUuid, module, writable }) {
             </button>
         </form>
 
-        {items === null ? <p className="mt-3">กำลังโหลดรายการข่าว…</p> : items.length === 0 ? <p className="mt-3 text-krikkit-muted">ยังไม่มีข่าวสาร</p> : (
-            <div className="mt-4 space-y-2">
+        {items === null ? <p className="mt-3" role="status">กำลังโหลดรายการข่าว…</p> : items.length === 0 ? <p className="studio-empty mt-4">ยังไม่มีข่าวสาร เริ่มเขียนบทความแรกและบันทึกเป็นแบบร่างได้</p> : (
+            <div className="studio-record-list mt-4 space-y-2">
                 {items.map(item => (
                     <article key={item.uuid} className="rounded-lg border border-krikkit-line p-3">
                         <div className="flex flex-wrap items-center justify-between gap-2">
-                            <p className="font-medium">{item.title} <span className="text-xs text-krikkit-muted">({item.slug}) · {statusLabels[item.status]} · รุ่น {item.version}</span></p>
+                            <p className="font-medium">{item.title} <span className="text-xs text-krikkit-muted">{item.slug} · รุ่น {item.version}</span></p>
                             <button type="button" disabled={busy} className={`rounded-lg px-2.5 py-1 text-xs ${LAB_BTN_OUTLINE}`} onClick={() => startEdit(item)}>แก้ไขข่าวนี้</button>
                         </div>
                         {item.excerpt ? <p className="mt-1 text-xs text-krikkit-muted">{item.excerpt}</p> : null}
                         <p className="mt-2 line-clamp-2 whitespace-pre-wrap text-xs">{item.body}</p>
+                        <span className="studio-record-status mt-3" data-status={item.status}>{statusLabels[item.status]}</span>
                     </article>
                 ))}
             </div>
         )}
+        </div>
     </section>
 }

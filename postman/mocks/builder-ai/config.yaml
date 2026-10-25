@@ -1,0 +1,5 @@
+version: 1
+name: Builder AI completion contract
+description: Fictional Chat Completions responses for the existing compatible driver; no real vendor calls or keys.
+interceptRequests: false
+mockSrc: default.js

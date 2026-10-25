@@ -15,9 +15,6 @@
     <div class="flex items-center gap-2 px-3.5 pb-5 pt-4">
         <a href="{{ route('dashboard.home') }}" wire:navigate class="group flex min-w-0 flex-1 items-center gap-2.5">
             <x-site.mark />
-            <span class="min-w-0 truncate text-sm font-semibold tracking-tight text-krikkit-fg">
-                {{ app(\App\Support\Site\SiteSettings::class)->name() }}
-            </span>
         </a>
         <button
             type="button"

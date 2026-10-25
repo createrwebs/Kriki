@@ -72,7 +72,7 @@ class LabPublication extends Model
 
     public function isLive(): bool
     {
-        return $this->status === self::STATUS_LIVE;
+        return $this->status === self::STATUS_LIVE || ($this->status === self::STATUS_BUILDING && $this->published_at !== null && is_file($this->liveRoot().'/index.html'));
     }
 
     public function isBuilding(): bool
@@ -103,7 +103,7 @@ class LabPublication extends Model
         if (is_string($slug) && $slug !== '') {
             return self::query()
                 ->with('project')
-                ->where('status', self::STATUS_LIVE)
+                ->where(fn ($query) => $query->where('status', self::STATUS_LIVE)->orWhere(fn ($query) => $query->where('status', self::STATUS_BUILDING)->whereNotNull('published_at')))
                 ->where('kind', self::KIND_SUBDOMAIN)
                 ->where('subdomain', $slug)
                 ->first();
@@ -111,7 +111,7 @@ class LabPublication extends Model
 
         return self::query()
             ->with('project')
-            ->where('status', self::STATUS_LIVE)
+            ->where(fn ($query) => $query->where('status', self::STATUS_LIVE)->orWhere(fn ($query) => $query->where('status', self::STATUS_BUILDING)->whereNotNull('published_at')))
             ->where('kind', self::KIND_CUSTOM)
             ->where('custom_host', $host)
             ->whereNotNull('custom_host_verified_at')

@@ -11,8 +11,7 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <x-layouts.partials.themeBoot />
-        <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=sora:400,500,600,700&display=swap" rel="stylesheet" />
+        <x-layouts.partials.fonts />
         <x-layouts.partials.brand />
         <x-layouts.partials.seo />
         @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
@@ -24,9 +23,9 @@
         <x-layouts.partials.themeStyle />
         @livewireStyles
     </head>
-    <body class="h-full overflow-hidden bg-krikkit-canvas font-sans text-krikkit-fg antialiased">
+    <body class="studio-admin h-full overflow-hidden bg-krikkit-canvas font-sans text-krikkit-fg antialiased">
         <div
-            class="flex h-full"
+            class="studio-admin-frame flex h-full"
             x-data="{
                 navOpen: false,
                 desktop: false,
@@ -59,10 +58,10 @@
 
             <x-dashboard.sidebar />
 
-            <div class="flex min-h-0 min-w-0 flex-1 flex-col bg-krikkit-canvas">
+            <div class="studio-admin-sheet flex min-h-0 min-w-0 flex-1 flex-col bg-krikkit-canvas">
                 <x-dashboard.header :breadcrumbs="$breadcrumbs" />
 
-                <main class="krikkit-scroll-hover min-h-0 flex-1 overflow-y-auto bg-krikkit-canvas px-4 py-6 sm:px-5 sm:py-8 lg:px-8">
+                <main class="studio-admin-content krikkit-scroll-hover min-h-0 flex-1 overflow-y-auto bg-krikkit-canvas px-4 py-6 sm:px-5 sm:py-8 lg:px-8">
                     <div
                         class="relative mx-auto {{ $wide ? 'max-w-6xl' : 'max-w-5xl' }}"
                         x-data="krikkitPageLoad"

@@ -1,0 +1,3 @@
+$kind: collection
+name: lab/{project}/modules/{module}
+order: 2000

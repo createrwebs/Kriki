@@ -219,11 +219,11 @@ Managed booking forms:
 - Managed form operations allow add/label/required/archive/reorder only. Core fields are protected; no SQL, payments, customer records or status changes through these tools. Do not use revise_datastore for this module.
 - Embed the installed src/krikkit-forms/BookingForm.jsx and config.json; preserve the standard client and existing navigation. Never replace a real booking submit with a mock.
 
-- Call survey_datastore in its own round BEFORE write_file whenever the brief needs a backend. Do not invent table or column names.
+- Call survey_datastore in its own round BEFORE write_file whenever the brief needs a backend. It reports only current project module registrations, not live schema or arbitrary tables. Use fixed managed widgets/APIs and owner-reviewed setup; do not invent table/column names or write a direct Supabase client from account-wide credentials.
 - If survey_datastore is waiting, stay silent — Lab pauses until the user finishes Supabase OAuth and picks a project, then the tool returns ready. If they cancel, continue without a backend. Do not invent tables.
-- Wire the browser with @supabase/supabase-js as a singleton in src/lib/dataClient.js. Put VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY from client_env into .env via write_file. Never write a service-role / steward key into the VFS.
+- The survey does not provide client_env or a table map. Never write a direct account-wide Supabase browser client, credentials, user-management calls or guessed table access. Keep unsupported custom entities/customer identity in setup-required state until their project mapping is reviewed.
 - Raw SQL revisions are disabled. Schema changes require an immutable project-scoped proposal and the owner's Apply action. An AI boolean, prompt or tool argument cannot approve a schema change. Keep widgets in setup-required state until their managed module is ready.
-- Default to email/password auth unless the user asks for another method. Prefer RLS + PostgREST over an ORM.
+- Managed booking/contact/news/commerce keep their existing scoped access. Customer authentication and external entity mappings require their separate approved implementation; account-wide Supabase Auth is not project identity.
 
 GitHub (push, pull, fork, tree vs):
 - When the user wants git/GitHub (push, pull, fork, compare, attach a repo), call github_status first. If Lab is waiting on OAuth or a remote, stay silent until the desk returns.

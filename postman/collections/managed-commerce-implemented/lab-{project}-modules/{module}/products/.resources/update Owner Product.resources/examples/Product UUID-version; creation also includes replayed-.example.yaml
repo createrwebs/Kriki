@@ -1,0 +1,55 @@
+$kind: http-example
+name: Product UUID/version; creation also includes replayed.
+request:
+  url: "{{baseUrl}}/lab/:project/modules/:module/products/:product"
+  method: PATCH
+  headers:
+    - key: laravel_session
+      value: <API Key>
+      description: "Added as a part of security scheme: apikey"
+    - key: X-CSRF-TOKEN
+      value: string
+      disabled: false
+      description: "(Required) "
+    - key: Accept
+      value: application/json
+  pathVariables:
+    - key: project
+      value: 34c9f942-d901-6272-1761-67c2ee5e8e3a
+      disabled: false
+      description: "(Required) "
+    - key: module
+      value: 34c9f942-d901-6272-1761-67c2ee5e8e3a
+      disabled: false
+      description: "(Required) "
+    - key: product
+      value: 34c9f942-d901-6272-1761-67c2ee5e8e3a
+      disabled: false
+      description: "(Required) "
+  body:
+    type: json
+    content: |-
+      {
+        "expected_version": 1457,
+        "sku": "bJh8tKTfDtet8RSFiojsFFmaj3DCLHEHCiE9YILmt",
+        "title": "string",
+        "price_satang": 45061345,
+        "active": false,
+        "description": "string"
+      }
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "product": {
+          "product_uuid": "3398124b-390d-0b23-99d4-17d078a448d2",
+          "version": 7750,
+          "replayed": true
+        }
+      }
+order: 1000

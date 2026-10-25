@@ -12,6 +12,7 @@ use App\Models\LabProject;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use InvalidArgumentException;
+use RuntimeException;
 
 class LabPublishController extends Controller
 {
@@ -73,12 +74,19 @@ class LabPublishController extends Controller
             return $denied;
         }
 
+        $lease = app(\App\Lab\Modules\OperationLimiter::class)->acquire($request->user(), $project, 'build', (string) \Illuminate\Support\Str::uuid(), true);
+        $successful = false;
         try {
             $payload = $manager->deployArtifact($project, $request->user(), $request->file('artifact'));
+            $successful = true;
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e) {
+            return response()->json(['message' => $e->getMessage()], $e->getStatusCode());
         } catch (InvalidArgumentException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         } catch (RuntimeException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
+        } finally {
+            app(\App\Lab\Modules\OperationLimiter::class)->finalize($request->user(), $project, $lease, $successful);
         }
 
         return response()->json($payload);

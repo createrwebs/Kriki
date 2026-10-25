@@ -1,0 +1,40 @@
+$kind: http-request
+description: Recipient normalizes to10 phone,13 national/tax or15 ewallet digits. CAS; does not alter saved order QR snapshots.
+url: "{{baseUrl}}/lab/:project/modules/:module/payment-settings"
+method: PUT
+headers:
+  - key: Cookie
+    value: "{{ownerCookieName}}={{ownerSession}}"
+  - key: X-CSRF-TOKEN
+    value: "{{csrfToken}}"
+    disabled: false
+    description: "(Required) "
+  - key: Content-Type
+    value: application/json
+  - key: Accept
+    value: application/json
+pathVariables:
+  - key: project
+    value: 42f952c6-86e7-67ab-8842-f8dac3a02326
+    disabled: false
+    description: "(Required) "
+  - key: module
+    value: 42f952c6-86e7-67ab-8842-f8dac3a02326
+    disabled: false
+    description: "(Required) "
+body:
+  type: json
+  content: |-
+    {
+      "expected_version": 8698,
+      "recipient_type": "ewallet",
+      "recipient": "string",
+      "payee_label": "string",
+      "enabled": false,
+      "instructions": "string"
+    }
+auth:
+  type: noauth
+settings: {}
+examples: ./.resources/update Owner Payment Settings.resources/examples
+order: 2000

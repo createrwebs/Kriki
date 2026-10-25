@@ -13,16 +13,17 @@ final class LabModuleCors
     public function handle(Request $request, Closure $next): Response
     {
         if (!$request->is('api/lab-widgets/*')) return $next($request);
-        if (strlen($request->getContent()) > 20 * 1024) return response()->json(['message' => 'Widget request is too large.'], 413);
+        $maxBytes = $request->isMethod('POST') && preg_match('~^api/lab-widgets/[^/]+/orders/[^/]+/slips$~D', $request->path()) ? \App\Lab\Modules\SlipImage::MAX_JSON_BYTES : 20 * 1024;
+        $tooLarge = strlen($request->getContent()) > $maxBytes;
         $origin = $request->header('Origin');
         $module = LabModuleInstallation::query()->where('uuid', $request->segment(3))->first();
         if (!$module || !is_string($origin) || !$this->allowsOrigin($origin, $module)) return response()->json(['message' => 'This widget origin is not allowed.'], 403, ['Cache-Control' => 'no-store']);
-        try { $response = $request->isMethod('OPTIONS') ? response('', 204) : $next($request); }
+        try { $response = $tooLarge ? response()->json(['message' => 'Widget request is too large.'], 413) : ($request->isMethod('OPTIONS') ? response('', 204) : $next($request)); }
         catch (\Throwable $error) { $response = app(\Illuminate\Contracts\Debug\ExceptionHandler::class)->render($request, $error); }
         $response->headers->set('Access-Control-Allow-Origin', $origin);
         $response->headers->set('Vary', 'Origin', false);
         $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-        $response->headers->set('Access-Control-Allow-Headers', 'Content-Type, Accept');
+        $response->headers->set('Access-Control-Allow-Headers', 'Content-Type, Accept, X-Krikkit-Order-Token');
         $response->headers->set('Cache-Control', 'no-store');
         $response->headers->remove('Access-Control-Allow-Credentials');
         return $response;

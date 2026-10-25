@@ -63,6 +63,7 @@ Auth::guard('web')->forgetUser();
 $site->put('general', ['maintenance' => true]);
 $maintenance = $kernel->handle(Request::create('http://localhost:8889/features'));
 formCheck($maintenance->getStatusCode() === 503, 'Maintenance is preserved for public product route');
+$site->put('general', ['maintenance' => false]);
 formCheck(SiteSetting::first()->payload['landing'] === $saved['landing'] && SiteSetting::first()->payload['unrelated'] === $saved['unrelated'], 'Settings updates preserve all saved landing and unrelated values');
 
 Illuminate\Support\Facades\Gate::define('settings.revise', fn (?App\Models\User $actor) => $actor?->id === 901);
@@ -103,5 +104,5 @@ $freshSite = new SiteSettings;
 app()->instance(SiteSettings::class, $freshSite);
 app()->instance(LandingCopy::class, new LandingCopy($freshSite));
 $placeholderPage = $kernel->handle(Request::create('http://localhost:8889/features'));
-formCheck($placeholderPage->getStatusCode() === 200 && ! str_contains($placeholderPage->getContent(), 'Studio lead'), 'Old bundled sample testimonial is not presented as real operator proof');
+formCheck($placeholderPage->getStatusCode() === 200 && ! str_contains($placeholderPage->getContent(), 'Studio lead'), 'Old bundled sample testimonial is not presented as real operator proof: status='.$placeholderPage->getStatusCode().', sample='.(int) str_contains($placeholderPage->getContent(), 'Studio lead').' '.($placeholderPage->exception?->getMessage() ?? ''));
 formResult('landing copy and HTTP presentation');

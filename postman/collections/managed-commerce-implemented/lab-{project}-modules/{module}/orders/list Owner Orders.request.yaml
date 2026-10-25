@@ -1,0 +1,29 @@
+$kind: http-request
+description: Twenty-five orders per keyset page, created_at DESC/uuid DESC. Pass the returned opaque next_cursor unchanged. New arrivals do not shift an older-page cursor. Unknown query fields422. Includes a bounded latest100-attempt summary across the project; use per-order history for complete evidence. No image bytes, signed URLs or private object paths. Module must be orders.
+url: "{{baseUrl}}/lab/:project/modules/:module/orders?status=paid&cursor=string"
+method: GET
+headers:
+  Cookie: "{{ownerCookieName}}={{ownerSession}}"
+  Accept: application/json
+queryParams:
+  - key: status
+    value: paid
+    disabled: false
+  - key: cursor
+    value: string
+    disabled: false
+    description: Opaque next_cursor from the previous page; omit for latest records. Retain the same status/order filter while paging.
+pathVariables:
+  - key: project
+    value: 34c9f942-d901-6272-1761-67c2ee5e8e3a
+    disabled: false
+    description: "(Required) "
+  - key: module
+    value: 34c9f942-d901-6272-1761-67c2ee5e8e3a
+    disabled: false
+    description: "(Required) "
+auth:
+  type: noauth
+settings: {}
+examples: ./.resources/list Owner Orders.resources/examples
+order: 1000

@@ -127,6 +127,7 @@ formCheck(
 
 // 4. Public create order (2x 280 THB + 1x 450 THB = 1010 THB = 101000 satang)
 $orderRes = $publicHttp("/api/lab-widgets/{$catalogMod->uuid}/orders", 'POST', [
+    'quote_uuid' => $commerce->publicQuote($catalogMod, ['items' => [['product_uuid' => $prod1Uuid, 'quantity' => 2], ['product_uuid' => $prod2Uuid, 'quantity' => 1]]])['quote']['quote_uuid'],
     'idempotency_key' => (string) Str::uuid(),
     'customer_name' => 'คุณลูกค้า ทดสอบ',
     'customer_email' => 'customer@example.test',
@@ -144,13 +145,17 @@ formCheck(
     && $orderData['order']['status'] === 'awaiting_payment'
     && str_contains($orderData['order']['promptpay']['qr_svg'], '<svg')
     && str_contains($orderData['order']['promptpay']['qr_payload'], '1010.00'),
-    'Public checkout creates order with server-calculated 1010.00 THB total and PromptPay QR SVG'
+    'Public checkout creates order with server-calculated 1010.00 THB total and PromptPay QR SVG; HTTP '.$orderRes->getStatusCode().' '.($orderData['message'] ?? '')
 );
 $orderUuid = $orderData['order']['uuid'];
 $accessToken = $orderData['access_token'];
 
 // 5. Public submit payment slip -> status pending_review (never auto-paid)
-$png1x1 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+$fixtureImage = imagecreatetruecolor(130,130);
+for ($x=0; $x<130; $x++) for ($y=0; $y<130; $y++) imagesetpixel($fixtureImage,$x,$y,random_int(0,0xffffff));
+ob_start(); imagepng($fixtureImage); $fixturePng = ob_get_clean(); imagedestroy($fixtureImage);
+$png1x1 = 'data:image/png;base64,'.base64_encode($fixturePng);
+formCheck(strlen($png1x1) > 20*1024, 'Real slip fixture exceeds former middleware limit');
 $slipRes = $publicHttp("/api/lab-widgets/{$catalogMod->uuid}/orders/{$orderUuid}/slips", 'POST', [
     'idempotency_key' => (string) Str::uuid(),
     'payer_name' => 'คุณลูกค้า ทดสอบ',
@@ -165,9 +170,10 @@ formCheck(
     $slipRes->getStatusCode() === 201
     && $slipData['slip']['status'] === 'submitted'
     && $slipData['slip']['order_status'] === 'pending_review',
-    'Uploaded slip marks attempt submitted and order pending_review (never auto-paid)'
+    'Uploaded slip marks attempt submitted and order pending_review (never auto-paid); HTTP '.$slipRes->getStatusCode().' '.($slipData['message'] ?? '')
 );
 $attemptUuid = $slipData['slip']['uuid'];
+$expect(fn () => $commerce->publicSubmitSlip($catalogMod, $orderUuid, $accessToken, ['idempotency_key' => (string) Str::uuid(), 'payer_name' => 'Fake image', 'amount_satang' => 101000, 'slip_data_url' => 'data:image/png;base64,'.base64_encode('<html>not a decoded payment image</html>')]), 422, 'Disguised HTML is not accepted as a payment slip');
 
 // 6. Cross-tenant isolation check
 $expect(fn () => $commerce->listOrders($other, $foreign, $ordersMod), 404, 'Other account cannot read merchant orders');
@@ -176,9 +182,11 @@ $expect(fn () => $commerce->listOrders($other, $foreign, $ordersMod), 404, 'Othe
 $ownerOrders = $commerce->listOrders($owner, $project, $ordersMod)['items'];
 formCheck(count($ownerOrders) === 1 && count($ownerOrders[0]['payment_attempts']) === 1, 'Owner lists order with attached payment slip in back-office');
 
+$expect(fn () => $commerce->reviewPaymentSlip($owner, $project, $paymentsMod, $attemptUuid, ['expected_version' => 1, 'decision' => 'accepted', 'reason' => 'UI alone is insufficient']), 422, 'Bank check acknowledgement enforced on server');
 $review = $commerce->reviewPaymentSlip($owner, $project, $paymentsMod, $attemptUuid, [
     'expected_version' => 1,
     'decision' => 'accepted',
+    'bank_verified' => true,
     'reason' => 'ยอดเงินเข้าบัญชีเรียบร้อย',
 ])['review'];
 formCheck($review['attempt_status'] === 'accepted' && $review['order_status'] === 'paid', 'Owner approval transitions slip to accepted and order to paid');
@@ -193,4 +201,35 @@ formCheck(
     'Customer order status reflects paid after owner approval'
 );
 
+// Published-site browser preflight must permit the private order header.
+$preflight = $publicHttp("/api/lab-widgets/{$catalogMod->uuid}/orders/{$orderUuid}", 'OPTIONS', null, ['Access-Control-Request-Method' => 'GET', 'Access-Control-Request-Headers' => 'x-krikkit-order-token']);
+formCheck($preflight->getStatusCode() === 204 && str_contains(strtolower($preflight->headers->get('Access-Control-Allow-Headers', '')), 'x-krikkit-order-token'), 'Order capability header survives cross-origin preflight');
+formCheck($publicHttp("/api/lab-widgets/{$catalogMod->uuid}/orders/{$orderUuid}?token=".$accessToken)->getStatusCode() === 404, 'Order token in URL cannot authorize access');
+
+$allow('orders', false);
+formCheck(!$commerce->publicStorefront($catalogMod)['checkout_ready'], 'Storefront hides checkout when effective orders capability is denied');
+$expect(fn () => $commerce->publicQuote($catalogMod, ['items' => [['product_uuid' => $prod1Uuid, 'quantity' => 1]]]), 402, 'Downgraded orders feature blocks checkout even when catalog remains enabled');
+$allow('orders');
+
+// Lost-response replay must use the immutable saved amount/recipient and survive disable.
+$createBody = ['idempotency_key' => (string) Str::uuid(), 'customer_name' => 'Replay fixture', 'customer_email' => 'replay@example.invalid', 'items' => [['product_uuid' => $prod2Uuid, 'quantity' => 1]]];
+$createBody['quote_uuid'] = $commerce->publicQuote($catalogMod, ['items' => $createBody['items']])['quote']['quote_uuid'];
+$original = $commerce->publicCreateOrder($catalogMod, $createBody);
+$commerce->updateProduct($owner, $project, $catalogMod, $prod2Uuid, ['expected_version' => 1, 'sku' => 'DRIP-SET-01', 'title' => 'Changed product', 'description' => '', 'price_satang' => 50000, 'active' => true]);
+$retry = $commerce->publicCreateOrder($catalogMod, $createBody);
+formCheck($retry['replayed'] && $retry['order']['total_satang'] === $original['order']['total_satang'] && $retry['order']['items'] === $original['order']['items'] && $retry['order']['promptpay'] === $original['order']['promptpay'], 'Order replay returns exact immutable snapshots after price change');
+$modules->setState($owner, $project, $catalogMod, 'disabled', $catalogMod->revision);
+formCheck($commerce->publicGetOrder($catalogMod->fresh(), $orderUuid, $accessToken)['order']['status'] === 'paid', 'Authorized customer history survives module disable');
+formCheck($commerce->publicCreateOrder($catalogMod->fresh(), $createBody)['replayed'], 'Accepted creation retry survives module disable');
+$modules->setState($owner, $project, $catalogMod->fresh(), 'enabled', $catalogMod->fresh()->revision);
+Illuminate\Support\Carbon::setTestNow(now()->addHours(25));
+$expect(fn () => $commerce->publicGetOrder($catalogMod->fresh(), $orderUuid, $accessToken), 404, 'Guest capability expires after twenty-four hours');
+Illuminate\Support\Carbon::setTestNow();
+$rateOrder = (string) Str::uuid();
+$rateStatuses = [];
+for ($try = 0; $try < 6; $try++) {
+    $rateResponse = $publicHttp("/api/lab-widgets/{$catalogMod->uuid}/orders/{$rateOrder}/slips", 'POST', ['idempotency_key' => (string) Str::uuid()]);
+    $rateStatuses[] = $rateResponse->getStatusCode();
+}
+formCheck($rateStatuses === [404,404,404,404,404,429] && $rateResponse->headers->has('Retry-After') && $rateResponse->headers->has('Access-Control-Allow-Origin'), 'Actual slip route enforces five-per-minute limit and retains CORS on429: '.implode(',', $rateStatuses));
 formResult('actual commerce catalog, PromptPay QR checkout, slip upload, and owner review over Postman HTTP and local PostgreSQL');

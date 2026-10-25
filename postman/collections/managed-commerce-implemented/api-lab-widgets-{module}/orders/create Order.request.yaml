@@ -1,0 +1,38 @@
+$kind: http-request
+description: Maximum16KiB JSON. Requires an explicitly confirmed quote_uuid and matching cart. Expired, consumed or changed product/payment versions return409; obtain and confirm a fresh quote. Caller totals/recipient/status are rejected. Same UUID+normalized payload replays an accepted snapshot even after quote expiry/disable while guest capability remains valid; changed payload409. A quote is consumed atomically by one creation key. Rate10/min/IP/module and100/min/module. Preserve exact payload/key on ambiguous transport failures.
+url: "{{baseUrl}}/api/lab-widgets/:module/orders"
+method: POST
+headers:
+  - key: Origin
+    value: "{{publicationOrigin}}"
+    disabled: false
+    description: (Required) Exact authorized publication origin. CORS permits Content-Type/Accept/X-Krikkit-Order-Token without credentials.
+  - key: Content-Type
+    value: application/json
+  - key: Accept
+    value: application/json
+pathVariables:
+  - key: module
+    value: 34c9f942-d901-6272-1761-67c2ee5e8e3a
+    disabled: false
+    description: "(Required) "
+body:
+  type: json
+  content: |-
+    {
+      "idempotency_key": "17006de4-0211-ef26-b140-93fdbdb3905a",
+      "quote_uuid": "4cfb95b3-7563-6171-cb36-cf9a5ded94f0",
+      "customer_name": "string",
+      "customer_email": "qxc7aiXA8@wyYKXBqaWudUgctcK.myc",
+      "items": [
+        {
+          "product_uuid": "a18ea570-db7f-70b4-beee-d733618e8cbc",
+          "quantity": 1
+        }
+      ],
+      "customer_phone": "string",
+      "note": "string"
+    }
+settings: {}
+examples: ./.resources/create Order.resources/examples
+order: 1000

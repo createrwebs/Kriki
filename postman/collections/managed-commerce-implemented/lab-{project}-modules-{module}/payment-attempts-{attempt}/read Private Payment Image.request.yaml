@@ -1,0 +1,25 @@
+$kind: http-request
+description: No query parameters. Fresh owner/project/manual_payments scope and private bucket checks. Exact pinned Storage URL expires in300 seconds. Does not accept a caller object path. Legacy inline-only evidence is preserved but returns409 until explicit migration support is implemented.
+url: "{{baseUrl}}/lab/:project/modules/:module/payment-attempts/:attempt/image"
+method: GET
+headers:
+  Cookie: "{{ownerCookieName}}={{ownerSession}}"
+  Accept: application/json
+pathVariables:
+  - key: project
+    value: 42f952c6-86e7-67ab-8842-f8dac3a02326
+    disabled: false
+    description: "(Required) "
+  - key: module
+    value: 42f952c6-86e7-67ab-8842-f8dac3a02326
+    disabled: false
+    description: "(Required) "
+  - key: attempt
+    value: 42f952c6-86e7-67ab-8842-f8dac3a02326
+    disabled: false
+    description: "(Required) "
+auth:
+  type: noauth
+settings: {}
+examples: ./.resources/read Private Payment Image.resources/examples
+order: 1000

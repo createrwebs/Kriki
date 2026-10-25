@@ -1,0 +1,40 @@
+$kind: http-request
+description: ""
+url: "{{baseUrl}}/lab/:project/modules/:module/products"
+method: POST
+headers:
+  - key: Cookie
+    value: "{{ownerCookieName}}={{ownerSession}}"
+  - key: X-CSRF-TOKEN
+    value: "{{csrfToken}}"
+    disabled: false
+    description: "(Required) "
+  - key: Content-Type
+    value: application/json
+  - key: Accept
+    value: application/json
+pathVariables:
+  - key: project
+    value: 34c9f942-d901-6272-1761-67c2ee5e8e3a
+    disabled: false
+    description: "(Required) "
+  - key: module
+    value: 34c9f942-d901-6272-1761-67c2ee5e8e3a
+    disabled: false
+    description: "(Required) "
+body:
+  type: json
+  content: |-
+    {
+      "idempotency_key": "7f30708d-832f-df94-00cc-68dca4258fd1",
+      "sku": "ShALfG-EfxqRoLnNZe5-Ka",
+      "title": "string",
+      "price_satang": 45198790,
+      "description": "string",
+      "active": false
+    }
+auth:
+  type: noauth
+settings: {}
+examples: ./.resources/create Owner Product.resources/examples
+order: 2000

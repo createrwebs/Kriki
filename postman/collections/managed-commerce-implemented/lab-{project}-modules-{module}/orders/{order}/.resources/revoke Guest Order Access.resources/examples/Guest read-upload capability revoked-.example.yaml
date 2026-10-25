@@ -1,0 +1,43 @@
+$kind: http-example
+name: Guest read/upload capability revoked.
+request:
+  url: "{{baseUrl}}/lab/:project/modules/:module/orders/:order/revoke-access"
+  method: POST
+  headers:
+    - key: laravel_session
+      value: <API Key>
+      description: "Added as a part of security scheme: apikey"
+    - key: X-CSRF-TOKEN
+      value: string
+      disabled: false
+      description: "(Required) "
+    - key: Accept
+      value: application/json
+  pathVariables:
+    - key: project
+      value: 42f952c6-86e7-67ab-8842-f8dac3a02326
+      disabled: false
+      description: "(Required) "
+    - key: module
+      value: 42f952c6-86e7-67ab-8842-f8dac3a02326
+      disabled: false
+      description: "(Required) "
+    - key: order
+      value: 42f952c6-86e7-67ab-8842-f8dac3a02326
+      disabled: false
+      description: "(Required) "
+  body:
+    type: json
+    content: "{}"
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "revoked": {}
+      }
+order: 1000

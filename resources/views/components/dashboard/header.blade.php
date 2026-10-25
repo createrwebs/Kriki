@@ -2,7 +2,7 @@
     'breadcrumbs' => [],
 ])
 
-<header class="shrink-0 border-b border-krikkit-line/50 bg-krikkit-canvas">
+<header class="studio-admin-header shrink-0 border-b border-krikkit-line/50 bg-krikkit-canvas">
     <div class="flex min-h-14 items-center justify-between gap-3 px-4 py-2 sm:px-5 lg:px-8">
         <div class="flex min-w-0 flex-1 items-center gap-2">
             <button
@@ -30,9 +30,7 @@
                     </krikkit:breadcrumbs>
                 @else
                     <a href="{{ route('dashboard.home') }}" wire:navigate class="flex items-center gap-2 lg:hidden">
-                        <span class="truncate text-sm font-semibold tracking-tight text-krikkit-fg">
-                            {{ app(\App\Support\Site\SiteSettings::class)->name() }}
-                        </span>
+                        <x-site.mark />
                     </a>
                 @endif
             </div>

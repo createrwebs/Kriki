@@ -8,6 +8,7 @@ const fixture = new URL('../../.agent-work/test-deps/widget-navigation-fixture.m
 const reactUrl = new URL('../../.agent-work/test-deps/node_modules/react/index.js', import.meta.url).href
 let source = await readFile('resources/js/lab/widget-runtime/app-wrapper.jsx','utf8')
 source = source.replace("from 'react'", `from ${JSON.stringify(reactUrl)}`)
+    .replace("from './krikkit-widgets/commerceRoutes.js'", `from ${JSON.stringify(new URL('../../resources/js/lab/widget-runtime/commerceRoutes.js', import.meta.url).href)}`)
     .replace("import SiteContent from './SiteContent.jsx'", 'const SiteContent = () => React.createElement("main",null,"Site content")')
     .replace("import ContactForm from './krikkit-widgets/ContactForm.jsx'", 'const ContactForm = props => React.createElement("form", {"data-module":props.moduleUuid})')
     .replace("import NewsFeed from './krikkit-widgets/NewsFeed.jsx'", 'const NewsFeed = () => null')

@@ -11,8 +11,8 @@ final class ModuleCatalog
             'contact' => ['title' => 'Contact form', 'schema_version' => 1, 'dependencies' => [], 'legacy' => false],
             'news' => ['title' => 'News', 'schema_version' => 1, 'dependencies' => [], 'legacy' => false],
             'catalog' => ['title' => 'Product catalog', 'schema_version' => 1, 'dependencies' => [], 'legacy' => false],
-            'orders' => ['title' => 'Cart and orders', 'schema_version' => 1, 'dependencies' => ['catalog'], 'legacy' => false],
-            'manual_payments' => ['title' => 'Manual PromptPay review', 'schema_version' => 1, 'dependencies' => ['orders'], 'legacy' => false],
+            'orders' => ['title' => 'Cart and orders', 'schema_version' => 2, 'dependencies' => ['catalog'], 'legacy' => false],
+            'manual_payments' => ['title' => 'Manual PromptPay review', 'schema_version' => 2, 'dependencies' => ['orders'], 'legacy' => false],
             'custom_data' => ['title' => 'Custom data', 'schema_version' => 1, 'dependencies' => [], 'legacy' => false],
         ];
     }

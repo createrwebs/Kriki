@@ -17,7 +17,13 @@ final class ModuleSchema
             'manual_payments' => '0005_manual_payments.sql',
             default => abort(422, 'This module schema is not available yet.'),
         };
-        return file_get_contents(database_path('sql/lab-managed/'.$file));
+        $sql = file_get_contents(database_path('sql/lab-managed/'.$file));
+        if (!in_array($key, ['manual_payments','orders'], true)) return $sql;
+        $boundary = strrpos($sql, "\nCOMMIT;");
+        abort_unless($boundary !== false, 503, 'Invalid managed schema transaction.');
+        $fragment = $key === 'orders' ? '0007_order_quotes.fragment.sql' : '0006_private_slips.fragment.sql';
+        return substr($sql, 0, $boundary)."\n".file_get_contents(database_path('sql/lab-managed/'.$fragment))
+            ."\nCOMMIT;\nSELECT '{$key}'::text AS krikkit_schema_key,2::integer AS schema_version,true AS verified;\n";
     }
 
     public static function payload(LabProject $project, LabModuleInstallation $module): array

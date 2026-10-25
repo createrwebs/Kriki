@@ -1,0 +1,52 @@
+$kind: http-example
+name: Installed source files after complete snapshot validation.
+request:
+  url: "{{baseUrl}}/lab/:project/modules/:module/embed"
+  method: POST
+  headers:
+    - key: laravel_session
+      value: <API Key>
+      description: "Added as a part of security scheme: apikey"
+    - key: X-CSRF-TOKEN
+      value: string
+      disabled: false
+      description: "(Required) "
+    - key: Accept
+      value: application/json
+  pathVariables:
+    - key: project
+      value: 34c9f942-d901-6272-1761-67c2ee5e8e3a
+      disabled: false
+      description: "(Required) "
+    - key: module
+      value: 34c9f942-d901-6272-1761-67c2ee5e8e3a
+      disabled: false
+      description: "(Required) "
+  body:
+    type: json
+    content: |-
+      {
+        "route": "string",
+        "expected_app_hash": "cd853591e9be2ef6b4ec5f2447d5785ab885eb7af6381c6ec16f6b8fd38fb6f4",
+        "expected_files": {
+          "key_0": "35b99e7b71f4322503e5397f37b17d59a58d12e5a64c11a9f2221d16c97298ad",
+          "key_1": "203bd64d07086cb099604422f25ef06c4ed8110cc5d12996af14a4e96f0da35c"
+        },
+        "impact_hash": "fe9cb454201d088c08b47b22464447590fceb973b3d3901e90252b1d57941a11"
+      }
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "files": {
+          "key_0": "string",
+          "key_1": "string",
+          "key_2": "string"
+        }
+      }
+order: 1000

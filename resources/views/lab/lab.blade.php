@@ -5,8 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
         <x-layouts.partials.themeBoot />
-        <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=sora:400,500,600,700&display=swap" rel="stylesheet" />
+        <x-layouts.partials.fonts />
         <x-layouts.partials.brand />
         <x-layouts.partials.seo />
         @vite(['resources/css/app.css', 'resources/js/lab/lab.jsx'])
@@ -28,8 +27,6 @@
                         $userBusinessProfile = [
                             'company_name' => (string) ($bp->company_name ?? ''),
                             'business_description' => (string) ($bp->business_description ?? ''),
-                            'website_budget_amount' => (string) ($bp->website_budget_amount ?? ''),
-                            'website_budget_currency' => (string) ($bp->website_budget_currency ?? 'THB'),
                         ];
                     }
                 } catch (\Throwable) {

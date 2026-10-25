@@ -436,7 +436,7 @@ export function buildAgentContinuationPrompt({
         lines.push(
             skipped
                 ? 'DATASTORE: The user declined or skipped Supabase. Continue WITHOUT a backend. Do not invent tables, do not write .env / dataClient.js, and do not retry survey_datastore or revise_datastore this turn.'
-                : 'DATASTORE: Use client_env from survey_datastore for .env (VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY only). Write src/lib/dataClient.js as an @supabase/supabase-js singleton. Never invent tables — use the returned map. Never write a service-role key. Raw SQL revisions are disabled; schema changes require a project-scoped proposal and owner Apply.',
+                : 'DATASTORE: survey_datastore returns only current project module registration metadata, not a live schema check. Use managed widgets and their scoped APIs. Do not invent tables, write .env/dataClient.js or connect directly to the account-wide Supabase client. Schema changes require a project-scoped proposal and owner Apply.',
             '',
         )
     }

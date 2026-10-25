@@ -2,7 +2,7 @@
 
 วันที่อ้างอิง:2026-10-16 Asia/Bangkok
 สถานะ: In progress — เจ้าของสั่งให้อ่านโปรเจกต์และทำงานต่อ เริ่ม S1
-Current: ปิดการ execute PHP ใน Laravel แล้ว; S1 การแยก preview origin และ browser acceptance ยังไม่ผ่าน gate
+Current2026-10-25: C1–C5/local source/build/entry มี implementation และชุดทดสอบจริงแล้ว; browser/live/independent gate ยังไม่ปิด ดู [สถานะปัจจุบัน](../../PROJECT-STATUS.md) และ [backlog ครบทุกส่วน](../../BACKLOG.md) ก่อนใช้ checkpoint เก่าด้านล่าง
 
 ## อ่านเอกสารตามลำดับ
 

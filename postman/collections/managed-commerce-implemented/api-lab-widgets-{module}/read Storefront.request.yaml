@@ -1,0 +1,19 @@
+$kind: http-request
+description: Active catalog products; checkout_ready intersects all effective order/payment policies. No query parameters.
+url: "{{baseUrl}}/api/lab-widgets/:module/storefront"
+method: GET
+headers:
+  - key: Origin
+    value: "{{publicationOrigin}}"
+    disabled: false
+    description: (Required) Exact authorized publication origin. CORS permits Content-Type/Accept/X-Krikkit-Order-Token without credentials.
+  - key: Accept
+    value: application/json
+pathVariables:
+  - key: module
+    value: 34c9f942-d901-6272-1761-67c2ee5e8e3a
+    disabled: false
+    description: "(Required) "
+settings: {}
+examples: ./.resources/read Storefront.resources/examples
+order: 1000

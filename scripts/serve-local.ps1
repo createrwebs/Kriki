@@ -16,7 +16,7 @@ try {
     # Keep this development-only switch out of php.ini and production settings.
     & $Php -d extension_dir="$(Split-Path -Parent $Php)/ext" `
         -d extension=openssl -d extension=pdo_mysql -d extension=pdo_sqlite `
-        -d extension=mbstring -d extension=curl -d extension=fileinfo -d extension=zip -d extension=intl `
+        -d extension=mbstring -d extension=curl -d extension=fileinfo -d extension=zip -d extension=intl -d extension=gd `
         -d opcache.enable=0 -d opcache.enable_cli=0 -d variables_order=EGPCS `
         -S "127.0.0.1:$Port" -t $localPublic $localRouter
     if ($LASTEXITCODE -ne 0) { throw "Local PHP server exited with status $LASTEXITCODE." }

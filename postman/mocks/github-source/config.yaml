@@ -1,0 +1,5 @@
+version: 1
+name: GitHub source completeness contract
+description: Fictional readonly GitHub tree/blob cases; no external GitHub calls or source execution.
+interceptRequests: false
+mockSrc: default.js

@@ -1,0 +1,11 @@
+# GitHub source completeness simulation
+
+Local-only fictional GitHub REST source responses for `GithubApiClient`, `GithubSubtreeFetcher` and `GithubRepoImporter`. Based on the application's existing GET contract and official GitHub trees/blobs response fields. Owner-workspace mock lookup skipped: no authenticated GitHub-owned Postman workspace available. No remote dependency/resource publication.
+
+Start: `postman simulation run postman/simulations/github-source.sim.yaml --port 4904 --no-history --output ndjson`. Read the listening event and use its github member URL, expected `http://127.0.0.1:4904/github`. The handler models only fictional repo metadata/commits/contents/trees/blobs and test-only reset/journal controls; unsupported operations501. It never contacts GitHub or executes source. No dependency on the existing Supabase4900/PGlite4910 fixture.
+
+Run `tests/regressions/github-source-completeness.php` with the documented MAMP PHP8.5 extensions. All writes stay in SQLite memory and a unique .agent-work/qa workspace; source bytes are never built or installed. No actual OAuth token is used. Inspection/license rights/secret scanning, persistent approvals, client dirty buffers, lease fencing and runtime isolation remain separate Gate G tasks.
+
+Capture stdout to a local ignored ndjson file. Despite not passing --log-body, this CLI emitted response bodies in request events; use only fictional source and never upload those logs. Check the github member request events plus the handler's read-only journal to prove pinning and no ZIP fallback. Stop only the process created for this simulation. Windows background Start-Process uses WindowStyle Hidden.
+
+2026-10-25: source completeness78 passed via actual HTTP (metadata/commits/contents/trees/blobs), including all failure cases and a healthy binary/lock import. The github member is the only member; it handled the paths tested. The handler journal verifies all root Contents reads use the same pinned commit and the mutable branch resolves once. No ZIP endpoint is modeled; unexpected calls501. Stdout evidence: .agent-work/qa/2026-10-25-github-source-simulation.ndjson. No claim of live private OAuth, provider rate-limit or execution readiness.

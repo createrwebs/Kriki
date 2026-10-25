@@ -11,7 +11,6 @@
             <div class="lg:col-span-2">
                 <a href="{{ route('home') }}" class="inline-flex items-center text-krikkit-fg">
                     <x-site.mark />
-                    <span class="sales-wordmark" aria-hidden="true">{{ $site->name() }}</span>
                 </a>
                 <p class="mt-4 max-w-xs text-sm leading-relaxed text-krikkit-muted">
                     {{ $footer['blurb'] }}

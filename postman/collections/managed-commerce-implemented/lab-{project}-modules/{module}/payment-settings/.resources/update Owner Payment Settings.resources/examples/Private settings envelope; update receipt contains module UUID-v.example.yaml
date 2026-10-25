@@ -1,0 +1,47 @@
+$kind: http-example
+name: Private settings envelope; update receipt contains module UUID/version, GET contains recipient/configuration.
+request:
+  url: "{{baseUrl}}/lab/:project/modules/:module/payment-settings"
+  method: PUT
+  headers:
+    - key: laravel_session
+      value: <API Key>
+      description: "Added as a part of security scheme: apikey"
+    - key: X-CSRF-TOKEN
+      value: string
+      disabled: false
+      description: "(Required) "
+    - key: Accept
+      value: application/json
+  pathVariables:
+    - key: project
+      value: 34c9f942-d901-6272-1761-67c2ee5e8e3a
+      disabled: false
+      description: "(Required) "
+    - key: module
+      value: 34c9f942-d901-6272-1761-67c2ee5e8e3a
+      disabled: false
+      description: "(Required) "
+  body:
+    type: json
+    content: |-
+      {
+        "expected_version": 3162,
+        "recipient_type": "ewallet",
+        "recipient": "string",
+        "payee_label": "string",
+        "enabled": false,
+        "instructions": "string"
+      }
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "settings": {}
+      }
+order: 1000

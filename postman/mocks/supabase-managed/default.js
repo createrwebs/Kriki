@@ -2,13 +2,23 @@
 const http = require('node:http');
 http.createServer(async (req, res) => {
   const send = (status, body) => { res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(body)); };
+  try {
+  // Parse JSON ourselves so the simulator never decodes PNG bytes as text.
+  const chunks=[];for await(const chunk of req)chunks.push(chunk);
+  const bytes=Buffer.concat(chunks);
+  req.body=req.headers['content-type']?.startsWith('image/')?bytes:(bytes.length?JSON.parse(bytes.toString('utf8')):{});
   const url = new URL(req.url, 'http://localhost');
   // Local-only PostgreSQL-backed fixture. No requests reach Supabase.
   if (url.pathname.startsWith('/pglite/') || url.pathname === '/v1/projects/pglitefixture/database/query') {
     const path = url.pathname.replace(/^\/pglite/, '') + url.search;
-    const payload = req.method === 'POST' ? JSON.stringify(req.body) : null;
-    const upstream = http.request({ hostname: '127.0.0.1', port: 4910, path, method: req.method, headers: { 'Content-Type': 'application/json' } }, response => {
-      res.writeHead(response.statusCode, { 'Content-Type': 'application/json' }); response.pipe(res);
+    let payload;
+    if(req.headers['content-type']?.startsWith('image/')){
+      if(Buffer.isBuffer(req.body))payload=req.body;
+      else if(typeof req.body==='string')payload=Buffer.from(req.body,'binary');
+      else {const chunks=[];for await(const chunk of req)chunks.push(chunk);payload=Buffer.concat(chunks)}
+    }else payload=['POST','DELETE'].includes(req.method)?JSON.stringify(req.body):null;
+    const upstream = http.request({ hostname: '127.0.0.1', port: 4910, path, method: req.method, headers: { 'Content-Type': req.headers['content-type']||'application/json', ...(payload==null?{}:{'Content-Length':Buffer.byteLength(payload)}), apikey:req.headers.apikey||'',authorization:req.headers.authorization||'','x-upsert':req.headers['x-upsert']||'' } }, response => {
+      res.writeHead(response.statusCode, { 'Content-Type': response.headers['content-type']||'application/json' }); response.pipe(res);
     });
     upstream.on('error', () => send(503, { message: 'Local fictional PostgreSQL adapter is unavailable' }));
     upstream.end(payload);
@@ -41,4 +51,5 @@ http.createServer(async (req, res) => {
     return send(200, [{ project_uuid: req.body.p_project_uuid, module_uuid: req.body.p_module_uuid, schema_version: 1 }]);
   }
   send(501, { message: 'Endpoint not modeled by the managed module contract' });
+  } catch { send(500,{message:'Local dependency fixture failed'}); }
 }).listen(process.env.PORT);

@@ -35,6 +35,15 @@ final class LabPublicModuleController extends Controller
         return response()->json($commerce->publicStorefront($module), 200, ['Cache-Control' => 'no-store']);
     }
 
+    public function quote(Request $request, LabModuleInstallation $module, \App\Lab\Modules\CommerceStore $commerce): JsonResponse
+    {
+        abort_if(strlen($request->getContent()) > 16384, 413);
+        abort_unless($request->isJson(), 422, 'A JSON object is required.');
+        try { $body = json_decode($request->getContent(), true, 16, JSON_THROW_ON_ERROR); } catch (\JsonException) { abort(422); }
+        abort_unless(is_array($body) && !array_is_list($body), 422);
+        return response()->json($commerce->publicQuote($module, $body), 201, ['Cache-Control' => 'no-store']);
+    }
+
     public function createOrder(Request $request, LabModuleInstallation $module, \App\Lab\Modules\CommerceStore $commerce): JsonResponse
     {
         abort_if(strlen($request->getContent()) > 16384, 413, 'Order request is too large.');
@@ -48,13 +57,14 @@ final class LabPublicModuleController extends Controller
 
     public function showOrder(Request $request, LabModuleInstallation $module, string $order, \App\Lab\Modules\CommerceStore $commerce): JsonResponse
     {
-        $token = (string) ($request->header('X-Krikkit-Order-Token') ?? $request->query('token', ''));
+        abort_unless($request->query() === [], 404);
+        $token = (string) ($request->header('X-Krikkit-Order-Token') ?? '');
         return response()->json($commerce->publicGetOrder($module, $order, $token), 200, ['Cache-Control' => 'no-store']);
     }
 
     public function submitOrderSlip(Request $request, LabModuleInstallation $module, string $order, \App\Lab\Modules\CommerceStore $commerce): JsonResponse
     {
-        abort_if(strlen($request->getContent()) > 2600000, 413, 'Payment slip upload is too large.');
+        abort_if(strlen($request->getContent()) > \App\Lab\Modules\SlipImage::MAX_JSON_BYTES, 413, 'Payment slip upload is too large.');
         abort_unless($request->isJson(), 422, 'A JSON object is required.');
         try { $body = json_decode($request->getContent(), true, 16, JSON_THROW_ON_ERROR); }
         catch (\JsonException) { abort(422, 'Invalid JSON object.'); }

@@ -1,0 +1,35 @@
+$kind: http-example
+name: Private settings envelope; update receipt contains module UUID/version, GET contains recipient/configuration.
+request:
+  url: "{{baseUrl}}/lab/:project/modules/:module/payment-settings"
+  method: GET
+  headers:
+    - key: laravel_session
+      value: <API Key>
+      description: "Added as a part of security scheme: apikey"
+    - key: Accept
+      value: application/json
+  pathVariables:
+    - key: project
+      value: 42f952c6-86e7-67ab-8842-f8dac3a02326
+      disabled: false
+      description: "(Required) "
+    - key: module
+      value: 42f952c6-86e7-67ab-8842-f8dac3a02326
+      disabled: false
+      description: "(Required) "
+  body:
+    type: text
+    content: ""
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "settings": {}
+      }
+order: 1000

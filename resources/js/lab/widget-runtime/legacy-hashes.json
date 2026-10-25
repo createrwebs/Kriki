@@ -1,0 +1,21 @@
+{
+  "app-wrapper.jsx": [
+    "31b34c0c7eefe24d337d8c1024adbdb97f80dc8efe06b2950034ab4803a5f707"
+  ],
+  "ContactForm.jsx": [
+    "160ea5e077eeecb945a3eccd9167d136e12e7a6bce2652aa3d4624b5eca684c2"
+  ],
+  "NewsFeed.jsx": [
+    "57e2fc4f2918054a5d406b6ca715c5cf4dc0d8511498370d53474862649d8fc5"
+  ],
+  "StorefrontWidget.jsx": [
+    "4e7d4fe2a285d0eecf4523d0bbcaeb83792e598369102e18bc5df6e171858159",
+    "b54074055ba0acbb8344c16626e18b327477e4674bc4943f4ab7549a8c97acc6"
+  ],
+  "storeState.js": [
+    "b6007f5a65c83ce450cc3c306428709fea15330457e4f5c7c1def37b3af81feb"
+  ],
+  "widgets.css": [
+    "db3a9d0d2cd6767315ce20a89ccf7169527b7b20cff4cac4d6d6b7f70e440695"
+  ]
+}

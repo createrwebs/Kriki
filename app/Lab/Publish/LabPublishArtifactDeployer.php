@@ -16,7 +16,7 @@ final class LabPublishArtifactDeployer
     /** @var list<string> */
     private const DIST_FOLDERS = ['dist', 'build', 'out'];
 
-    public function deploy(string $zipPath, string $destination): void
+    public function deploy(string $zipPath, string $destination, ?callable $validate = null): void
     {
         if (! is_file($zipPath)) {
             throw new InvalidArgumentException(__('dashboard.Upload a production build archive.'));
@@ -60,16 +60,28 @@ final class LabPublishArtifactDeployer
 
         $zip->close();
 
+        $stage = $destination.'.stage-'.bin2hex(random_bytes(8));
+        $backup = $destination.'.previous-'.bin2hex(random_bytes(8));
+        $promoted = false;
         try {
             $siteRoot = $this->resolveSiteRoot($extractRoot);
             $this->assertPublishableSite($siteRoot);
             File::ensureDirectoryExists(dirname($destination));
-            if (is_dir($destination)) {
-                File::deleteDirectory($destination);
+            if (!File::copyDirectory($siteRoot, $stage)) throw new RuntimeException('Could not stage the production build.');
+            $this->assertPublishableSite($stage);
+            if ($validate !== null) $validate($stage);
+            if (is_dir($destination) && !rename($destination, $backup)) throw new RuntimeException('Could not preserve the previous deployment.');
+            try {
+                if (!rename($stage, $destination)) throw new RuntimeException('Could not promote the staged build.');
+                $promoted = true;
+            } catch (Throwable $error) {
+                if (is_dir($backup) && !is_dir($destination)) rename($backup, $destination);
+                throw $error;
             }
-            File::copyDirectory($siteRoot, $destination);
         } finally {
             File::deleteDirectory($extractRoot);
+            if (is_dir($stage)) File::deleteDirectory($stage);
+            if ($promoted && is_dir($backup)) File::deleteDirectory($backup);
         }
 
         if (! is_file($destination.DIRECTORY_SEPARATOR.'index.html')) {
@@ -85,6 +97,7 @@ final class LabPublishArtifactDeployer
     {
         $maxFiles = max(1, (int) config('lab.publish.artifact_max_files', 5000));
         $count = $zip->numFiles;
+        $expanded = 0; $names = [];
 
         if ($count > $maxFiles) {
             throw new InvalidArgumentException(__('dashboard.The build archive contains too many files.'));
@@ -102,13 +115,24 @@ final class LabPublishArtifactDeployer
             }
 
             $normalized = str_replace('\\', '/', $name);
-            if (str_starts_with($normalized, '/') || str_contains($normalized, '../')) {
+            if (str_starts_with($normalized, '/') || preg_match('/(^|\/)\.{1,2}(\/|$)|^[a-zA-Z]:|\x00/', $normalized)) {
                 throw new InvalidArgumentException(__('dashboard.The build archive contains unsafe paths.'));
             }
-
-            if (str_ends_with($normalized, '/')) {
-                continue;
+            foreach (explode('/', rtrim($normalized, '/')) as $component) {
+                if ($component === '' || preg_match('/[<>:"|?*\x00-\x1f]|[. ]$/', $component)
+                    || preg_match('/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|$)/i', $component)) {
+                    throw new InvalidArgumentException(__('dashboard.The build archive contains unsafe paths.'));
+                }
             }
+            $operatingSystem = 0; $attributes = 0;
+            $zip->getExternalAttributesIndex($i, $operatingSystem, $attributes);
+            if ((($attributes >> 16) & 0170000) === 0120000) throw new InvalidArgumentException('The build archive contains a symbolic link.');
+            if (str_ends_with($normalized, '/')) continue;
+            $canonical = strtolower(preg_replace('~/+~', '/', $normalized));
+            if (isset($names[$canonical])) throw new InvalidArgumentException('The build archive contains duplicate paths.');
+            $names[$canonical] = true;
+            $expanded += (int) ($zip->statIndex($i)['size'] ?? 0);
+            if ($expanded > (int) config('lab.publish.artifact_max_expanded_bytes', 200 * 1024 * 1024)) throw new InvalidArgumentException('The expanded build archive is too large.');
 
             $target = $extractReal.DIRECTORY_SEPARATOR.str_replace('/', DIRECTORY_SEPARATOR, $normalized);
             $parent = dirname($target);

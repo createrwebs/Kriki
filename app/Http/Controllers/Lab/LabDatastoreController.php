@@ -5,10 +5,9 @@ namespace App\Http\Controllers\Lab;
 use App\Datastore\DatastoreKind;
 use App\Datastore\DatastoreRevisor;
 use App\Datastore\DatastoreSurveyor;
-use App\Datastore\Lenses\SupabaseLens;
-use App\Datastore\SupabaseCloud;
 use App\Datastore\SupabaseLinkBroker;
 use App\Http\Controllers\Controller;
+use App\Models\LabProject;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use InvalidArgumentException;
@@ -23,7 +22,7 @@ class LabDatastoreController extends Controller
             abort(401);
         }
 
-        return response()->json($broker->statusFor($user));
+        return response()->json([...$broker->statusFor($user), 'scope' => 'account', 'can_revise' => false]);
     }
 
     public function projects(Request $request, SupabaseLinkBroker $broker): JsonResponse
@@ -58,7 +57,7 @@ class LabDatastoreController extends Controller
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
-        return response()->json($broker->statusFor($user));
+        return response()->json([...$broker->statusFor($user), 'scope' => 'account', 'can_revise' => false]);
     }
 
     public function unlink(Request $request, SupabaseLinkBroker $broker): JsonResponse
@@ -70,16 +69,23 @@ class LabDatastoreController extends Controller
 
         $broker->unlink($user);
 
-        return response()->json($broker->statusFor($user));
+        return response()->json([...$broker->statusFor($user), 'scope' => 'account', 'can_revise' => false]);
     }
 
     public function survey(Request $request, DatastoreSurveyor $surveyor): JsonResponse
     {
-        return response()->json($surveyor->survey(
-            DatastoreKind::SUPABASE,
-            $request->boolean('fresh'),
-            $request->user(),
-        ));
+        $actor = $request->user();
+        abort_unless($actor !== null, 401);
+        abort_unless(array_diff(array_keys($request->all()), ['project_uuid', 'fresh']) === [], 422, 'Unexpected survey fields.');
+        $input = $request->validate([
+            'project_uuid' => ['required', 'uuid'],
+            'fresh' => ['sometimes', 'boolean'],
+        ]);
+        $project = LabProject::query()->where('uuid', $input['project_uuid'])->where('user_id', $actor->id)->first();
+        abort_unless($project !== null, 404);
+
+        return response()->json($surveyor->forProject($actor, $project))
+            ->header('Cache-Control', 'no-store');
     }
 
     public function revise(Request $request, DatastoreRevisor $revisor): JsonResponse
@@ -101,153 +107,48 @@ class LabDatastoreController extends Controller
         return response()->json($payload, $status);
     }
 
-    public function records(
-        Request $request,
-        SupabaseLinkBroker $broker,
-        DatastoreSurveyor $surveyor,
-        SupabaseLens $lens,
-    ): JsonResponse {
-        $user = $request->user();
-        if ($user === null) {
-            abort(401);
-        }
-
-        $validated = $request->validate([
-            'table' => ['required', 'string', 'max:64', 'regex:/^[A-Za-z_][A-Za-z0-9_]*$/'],
-            'limit' => ['nullable', 'integer', 'min:1', 'max:100'],
-        ]);
-
-        $plane = $broker->planeFor($user);
-        if (! $plane['ready']) {
-            return response()->json(['message' => 'No data plane is attached.'], 422);
-        }
-
-        $survey = $surveyor->survey(DatastoreKind::SUPABASE, false, $user);
-        $names = [];
-        foreach (is_array($survey['tables'] ?? null) ? $survey['tables'] : [] as $row) {
-            if (is_array($row) && filled($row['name'] ?? null)) {
-                $names[] = (string) $row['name'];
-            }
-        }
-
-        $table = $validated['table'];
-        if (! in_array($table, $names, true)) {
-            return response()->json(['message' => 'Unknown table.'], 404);
-        }
-
-        $payload = $lens->rows($plane, $table, (int) ($validated['limit'] ?? 50));
-        $status = ($payload['ok'] ?? false) ? 200 : 422;
-
-        return response()->json($payload, $status);
+    public function records(Request $request): JsonResponse
+    {
+        return $this->unscopedUnavailable($request);
     }
 
-    public function auth(Request $request, SupabaseCloud $cloud): JsonResponse
+    public function auth(Request $request): JsonResponse
     {
-        $user = $request->user();
-        if ($user === null) {
-            abort(401);
-        }
-
-        try {
-            return response()->json($cloud->authConfig($user));
-        } catch (RuntimeException $e) {
-            return response()->json(['message' => $e->getMessage()], 422);
-        }
+        return $this->unscopedUnavailable($request);
     }
 
-    public function saveAuth(Request $request, SupabaseCloud $cloud): JsonResponse
+    public function saveAuth(Request $request): JsonResponse
     {
-        $user = $request->user();
-        if ($user === null) {
-            abort(401);
-        }
-
-        $validated = $request->validate([
-            'allow_signup' => ['sometimes', 'boolean'],
-            'allow_anonymous' => ['sometimes', 'boolean'],
-            'email_password' => ['sometimes', 'boolean'],
-            'google' => ['sometimes', 'boolean'],
-        ]);
-
-        try {
-            return response()->json($cloud->saveAuth($user, $validated));
-        } catch (RuntimeException $e) {
-            return response()->json(['message' => $e->getMessage()], 422);
-        }
+        return $this->unscopedUnavailable($request);
     }
 
-    public function users(Request $request, SupabaseCloud $cloud): JsonResponse
+    public function users(Request $request): JsonResponse
     {
-        $user = $request->user();
-        if ($user === null) {
-            abort(401);
-        }
-
-        $q = trim((string) $request->query('q', ''));
-
-        try {
-            return response()->json($cloud->users($user, $q));
-        } catch (RuntimeException $e) {
-            return response()->json(['message' => $e->getMessage()], 422);
-        }
+        return $this->unscopedUnavailable($request);
     }
 
-    public function addUser(Request $request, SupabaseCloud $cloud): JsonResponse
+    public function addUser(Request $request): JsonResponse
     {
-        $user = $request->user();
-        if ($user === null) {
-            abort(401);
-        }
-
-        $validated = $request->validate([
-            'email' => ['required', 'email', 'max:180'],
-            'password' => ['nullable', 'string', 'min:8', 'max:120'],
-            'invite' => ['sometimes', 'boolean'],
-        ]);
-
-        try {
-            return response()->json($cloud->addUser(
-                $user,
-                $validated['email'],
-                $validated['password'] ?? null,
-                (bool) ($validated['invite'] ?? false),
-            ), 201);
-        } catch (RuntimeException $e) {
-            return response()->json(['message' => $e->getMessage()], 422);
-        }
+        return $this->unscopedUnavailable($request);
     }
 
-    public function restart(Request $request, SupabaseCloud $cloud): JsonResponse
+    public function restart(Request $request): JsonResponse
     {
-        $user = $request->user();
-        if ($user === null) {
-            abort(401);
-        }
-
-        try {
-            $cloud->restart($user);
-        } catch (RuntimeException $e) {
-            return response()->json(['message' => $e->getMessage()], 422);
-        }
-
-        return response()->json(['ok' => true]);
+        return $this->unscopedUnavailable($request);
     }
 
-    public function catalog(Request $request, SupabaseCloud $cloud): JsonResponse
+    public function catalog(Request $request): JsonResponse
     {
-        $user = $request->user();
-        if ($user === null) {
-            abort(401);
-        }
+        return $this->unscopedUnavailable($request);
+    }
 
-        $validated = $request->validate([
-            'topic' => ['required', 'string', 'in:security,functions,storage,secrets,logs,advanced'],
-        ]);
+    private function unscopedUnavailable(Request $request): JsonResponse
+    {
+        abort_unless($request->user() !== null, 401);
 
-        try {
-            return response()->json($cloud->catalog($user, $validated['topic']));
-        } catch (RuntimeException $e) {
-            return response()->json(['message' => $e->getMessage()], 422);
-        }
+        return response()->json([
+            'code' => 'project_scope_required',
+            'message' => 'Account-wide database administration is unavailable in Lab. Use the project Modules desk and scoped APIs. External tables and customer identity require a reviewed project mapping.',
+        ], 403)->header('Cache-Control', 'no-store');
     }
 }

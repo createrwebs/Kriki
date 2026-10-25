@@ -68,6 +68,11 @@ final class LabPublicationManager
      */
     public function saveAndPublish(LabProject $project, User $user, array $input): array
     {
+        return $this->workspaces->withWriteLock($project, fn () => $this->saveAndPublishLocked($project, $user, $input));
+    }
+
+    private function saveAndPublishLocked(LabProject $project, User $user, array $input): array
+    {
         LabProjectAccess::assertWritable($project, $user);
         $this->workspaces->ensure($project);
 
@@ -122,6 +127,11 @@ final class LabPublicationManager
      */
     public function verifyCustomHost(LabProject $project, User $user): array
     {
+        return $this->workspaces->withWriteLock($project, fn () => $this->verifyCustomHostLocked($project, $user));
+    }
+
+    private function verifyCustomHostLocked(LabProject $project, User $user): array
+    {
         LabProjectAccess::assertWritable($project, $user);
         $this->entitlements->assertFeature($user, EntitlementCatalog::CUSTOM_DOMAIN);
 
@@ -151,6 +161,11 @@ final class LabPublicationManager
      */
     public function unpublish(LabProject $project, User $user): array
     {
+        return $this->workspaces->withWriteLock($project, fn () => $this->unpublishLocked($project, $user));
+    }
+
+    private function unpublishLocked(LabProject $project, User $user): array
+    {
         LabProjectAccess::assertWritable($project, $user);
         $publication = $this->forProject($project);
         $publication->forceFill([
@@ -166,6 +181,11 @@ final class LabPublicationManager
      */
     public function deployArtifact(LabProject $project, User $user, UploadedFile $artifact): array
     {
+        return $this->workspaces->withWriteLock($project, fn () => $this->deployArtifactLocked($project, $user, $artifact));
+    }
+
+    private function deployArtifactLocked(LabProject $project, User $user, UploadedFile $artifact): array
+    {
         LabProjectAccess::assertWritable($project, $user);
         $this->workspaces->ensure($project);
 
@@ -179,30 +199,31 @@ final class LabPublicationManager
         }
 
         $destination = storage_path('app/lab/live/'.$project->uuid);
+        $hadPrevious = $publication->published_at !== null && is_file($destination.'/index.html');
         $zipPath = $artifact->getRealPath();
         if (! is_string($zipPath) || $zipPath === '') {
             throw new InvalidArgumentException(__('dashboard.Upload a production build archive.'));
         }
 
         try {
-            $this->deployer->deploy($zipPath, $destination);
+            $this->deployer->deploy($zipPath, $destination, fn (string $directory) => app(\App\Lab\Modules\ModuleArtifact::class)->verify($project, $directory));
             $publication->forceFill([
                 'status' => LabPublication::STATUS_LIVE,
                 'published_at' => now(),
                 'last_error' => null,
             ])->save();
         } catch (Throwable $e) {
-            if (is_dir($destination) && $publication->status !== LabPublication::STATUS_LIVE) {
+            if (!$hadPrevious && is_dir($destination)) {
                 File::deleteDirectory($destination);
             }
             $publication->forceFill([
-                'status' => LabPublication::STATUS_FAILED,
+                'status' => $hadPrevious ? LabPublication::STATUS_LIVE : LabPublication::STATUS_FAILED,
                 'last_error' => $this->publicError($e),
             ])->save();
 
             report($e);
 
-            throw $e instanceof InvalidArgumentException
+            throw $e instanceof InvalidArgumentException || $e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface
                 ? $e
                 : new RuntimeException($this->publicError($e), previous: $e);
         }

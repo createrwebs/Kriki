@@ -51,6 +51,8 @@ CREATE TABLE IF NOT EXISTS public.krikkit_payment_attempts(
   UNIQUE(project_uuid,module_uuid,request_key)
 );
 COMMENT ON TABLE public.krikkit_payment_attempts IS 'krikkit-managed-manual-payments-v1';
+ALTER TABLE public.krikkit_payment_attempts DROP CONSTRAINT IF EXISTS krikkit_payment_attempts_slip_data_url_check;
+ALTER TABLE public.krikkit_payment_attempts ADD CONSTRAINT krikkit_payment_attempts_slip_data_url_check CHECK(length(slip_data_url) BETWEEN 32 AND 7100000);
 CREATE INDEX IF NOT EXISTS krikkit_payment_attempts_order_idx ON public.krikkit_payment_attempts(project_uuid,module_uuid,order_uuid,uploaded_at DESC,uuid DESC);
 CREATE TABLE IF NOT EXISTS public.krikkit_payment_events(
   uuid uuid PRIMARY KEY DEFAULT gen_random_uuid(),project_uuid uuid NOT NULL,module_uuid uuid NOT NULL,
@@ -92,7 +94,7 @@ COMMENT ON FUNCTION public.krikkit_save_payment_settings(uuid,uuid,integer,jsonb
 CREATE OR REPLACE FUNCTION public.krikkit_submit_payment_slip(p_project_uuid uuid,p_module_uuid uuid,p_order_uuid uuid,p_key uuid,p_hash text,p_values jsonb)
 RETURNS TABLE(attempt_uuid uuid,order_uuid uuid,status text,order_status text,version integer,replayed boolean)
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $fn$
-DECLARE saved public.krikkit_payment_attempts%ROWTYPE; ord public.krikkit_commerce_orders%ROWTYPE;
+DECLARE saved public.krikkit_payment_attempts%ROWTYPE; ord public.krikkit_commerce_orders%ROWTYPE; previous text;
 BEGIN
   IF NOT EXISTS(SELECT 1 FROM public.krikkit_manual_payments_installations i WHERE i.project_uuid=p_project_uuid AND i.module_uuid=p_module_uuid AND i.schema_version=1) THEN RAISE EXCEPTION 'module_not_installed'; END IF;
   IF p_key IS NULL OR p_hash IS NULL OR p_hash !~ '^[a-f0-9]{64}$' OR jsonb_typeof(p_values) IS DISTINCT FROM 'object'
@@ -110,10 +112,11 @@ BEGIN
   SELECT o.* INTO ord FROM public.krikkit_commerce_orders o WHERE o.uuid=p_order_uuid AND o.project_uuid=p_project_uuid FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'order_not_found'; END IF;
   IF ord.status IN('paid','cancelled') THEN RAISE EXCEPTION 'invalid_transition'; END IF;
+  previous:=ord.status;
   INSERT INTO public.krikkit_payment_attempts(project_uuid,module_uuid,order_uuid,request_key,request_hash,payer_name,payer_phone,amount_satang,transfer_ref,claimed_transferred_at,slip_mime,slip_sha256,slip_data_url,status)
   VALUES(p_project_uuid,p_module_uuid,p_order_uuid,p_key,p_hash,trim(p_values->>'payer_name'),trim(p_values->>'payer_phone'),(p_values->>'amount_satang')::integer,trim(p_values->>'transfer_ref'),trim(p_values->>'claimed_transferred_at'),p_values->>'slip_mime',p_values->>'slip_sha256',p_values->>'slip_data_url','submitted') RETURNING * INTO saved;
   UPDATE public.krikkit_commerce_orders o SET status='pending_review',version=o.version+1,updated_at=now() WHERE o.uuid=ord.uuid RETURNING * INTO ord;
-  INSERT INTO public.krikkit_commerce_order_events(project_uuid,module_uuid,order_uuid,previous_status,next_status,version) VALUES(p_project_uuid,ord.module_uuid,ord.uuid,ord.status,'pending_review',ord.version);
+  INSERT INTO public.krikkit_commerce_order_events(project_uuid,module_uuid,order_uuid,previous_status,next_status,version) VALUES(p_project_uuid,ord.module_uuid,ord.uuid,previous,'pending_review',ord.version);
   INSERT INTO public.krikkit_payment_events(project_uuid,module_uuid,attempt_uuid,action,status,version) VALUES(p_project_uuid,p_module_uuid,saved.uuid,'slip_submitted','submitted',1);
   RETURN QUERY SELECT saved.uuid,saved.order_uuid,saved.status,ord.status,saved.version,false;
 END $fn$;
@@ -121,7 +124,7 @@ COMMENT ON FUNCTION public.krikkit_submit_payment_slip(uuid,uuid,uuid,uuid,text,
 CREATE OR REPLACE FUNCTION public.krikkit_review_payment_slip(p_project_uuid uuid,p_module_uuid uuid,p_attempt_uuid uuid,p_expected_version integer,p_decision text,p_reason text,p_actor_id bigint)
 RETURNS TABLE(attempt_uuid uuid,order_uuid uuid,attempt_status text,order_status text,version integer)
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,public AS $fn$
-DECLARE saved public.krikkit_payment_attempts%ROWTYPE; ord public.krikkit_commerce_orders%ROWTYPE; next_ord_status text;
+DECLARE saved public.krikkit_payment_attempts%ROWTYPE; ord public.krikkit_commerce_orders%ROWTYPE; next_ord_status text; previous text;
 BEGIN
   IF p_actor_id IS NULL OR p_actor_id<1 OR p_decision NOT IN('accepted','rejected') OR p_reason IS NULL OR length(p_reason)>500 THEN RAISE EXCEPTION 'invalid_review'; END IF;
   SELECT a.* INTO saved FROM public.krikkit_payment_attempts a WHERE a.uuid=p_attempt_uuid AND a.project_uuid=p_project_uuid AND a.module_uuid=p_module_uuid FOR UPDATE;
@@ -130,10 +133,15 @@ BEGIN
   IF saved.status<>'submitted' THEN RAISE EXCEPTION 'invalid_transition'; END IF;
   SELECT o.* INTO ord FROM public.krikkit_commerce_orders o WHERE o.uuid=saved.order_uuid AND o.project_uuid=p_project_uuid FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'order_not_found'; END IF;
-  next_ord_status := CASE WHEN p_decision='accepted' THEN 'paid' ELSE 'rejected' END;
+  IF ord.status IN('paid','cancelled') THEN RAISE EXCEPTION 'invalid_transition'; END IF;
+  IF p_decision='accepted' AND saved.amount_satang<>ord.total_satang THEN RAISE EXCEPTION 'invalid_review'; END IF;
+  IF p_decision='rejected' AND length(trim(p_reason))<1 THEN RAISE EXCEPTION 'invalid_review'; END IF;
+  previous:=ord.status;
+  next_ord_status := CASE WHEN p_decision='accepted' THEN 'paid'
+    WHEN EXISTS(SELECT 1 FROM public.krikkit_payment_attempts a WHERE a.order_uuid=ord.uuid AND a.status='submitted' AND a.uuid<>saved.uuid) THEN 'pending_review' ELSE 'rejected' END;
   UPDATE public.krikkit_payment_attempts a SET status=p_decision,reviewer_id=p_actor_id,review_reason=trim(p_reason),verified_at=now(),version=a.version+1,updated_at=now() WHERE a.uuid=saved.uuid RETURNING * INTO saved;
   UPDATE public.krikkit_commerce_orders o SET status=next_ord_status,version=o.version+1,updated_at=now() WHERE o.uuid=ord.uuid RETURNING * INTO ord;
-  INSERT INTO public.krikkit_commerce_order_events(project_uuid,module_uuid,order_uuid,actor_id,previous_status,next_status,version) VALUES(p_project_uuid,ord.module_uuid,ord.uuid,p_actor_id,'pending_review',ord.status,ord.version);
+  INSERT INTO public.krikkit_commerce_order_events(project_uuid,module_uuid,order_uuid,actor_id,previous_status,next_status,version) VALUES(p_project_uuid,ord.module_uuid,ord.uuid,p_actor_id,previous,ord.status,ord.version);
   INSERT INTO public.krikkit_payment_events(project_uuid,module_uuid,attempt_uuid,actor_id,action,status,version) VALUES(p_project_uuid,p_module_uuid,saved.uuid,p_actor_id,'slip_reviewed',saved.status,saved.version);
   RETURN QUERY SELECT saved.uuid,saved.order_uuid,saved.status,ord.status,saved.version;
 END $fn$;

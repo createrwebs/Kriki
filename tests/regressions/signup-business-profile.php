@@ -265,7 +265,7 @@ function signupGuestSession(): void
     Auth::guard('web')->forgetUser();
 }
 
-function signupHttp(string $path, string $method = 'GET', array $data = [], string $ip = '192.0.2.10', bool $csrf = true): array
+function signupHttp(string $path, string $method = 'GET', array $data = [], string $ip = '192.0.2.10', bool $csrf = true, string $accept = 'application/json'): array
 {
     $session = app('session')->driver();
     $session->start();
@@ -278,7 +278,7 @@ function signupHttp(string $path, string $method = 'GET', array $data = [], stri
     $cookieName = config('session.cookie');
     $encrypter = app('encrypter');
     $cookie = $encrypter->encrypt(CookieValuePrefix::create($cookieName, $encrypter->getKey()).$session->getId(), false);
-    $request = Request::create($path, $method, $data, [$cookieName => $cookie], [], ['HTTP_ACCEPT' => 'application/json', 'REMOTE_ADDR' => $ip]);
+    $request = Request::create($path, $method, $data, [$cookieName => $cookie], [], ['HTTP_ACCEPT' => $accept, 'REMOTE_ADDR' => $ip]);
     $kernel = app(Kernel::class);
     $response = $kernel->handle($request);
 
@@ -315,7 +315,13 @@ Schema::create('lab_projects', function (Blueprint $table): void {
 });
 [$lab] = signupHttp('/lab');
 formCheck($lab->getStatusCode() === 200 && str_contains($lab->getContent(), 'id="lab-bootstrap"'), 'Verified member still reaches actual Lab bootstrap');
-formCheck(! str_contains($lab->getContent(), 'website_budget_amount') && ! str_contains($lab->getContent(), 'website_budget_currency') && ! str_contains($lab->getContent(), 'Private company fixture') && ! str_contains($lab->getContent(), 'Private business description fixture'), 'Lab HTML/bootstrap never includes private business profile or budget');
+formCheck(! str_contains($lab->getContent(), 'website_budget_amount') && ! str_contains($lab->getContent(), 'website_budget_currency'), 'Lab HTML/bootstrap never includes private budget fields');
+formCheck(str_contains($lab->getContent(), 'Private company fixture') && str_contains($lab->getContent(), 'Private business description fixture'), 'Existing owner-only business name/description prefill remains available without budget');
+$legacy->forceFill(['email_verified_at'=>now(), 'status'=>UserStatus::Active])->save();
+$legacy->businessProfile()->updateOrCreate([], ['company_name'=>'Other owner company fixture', 'business_description'=>'Other owner description fixture']);
+signupGuestSession(); Auth::guard('web')->login($legacy);
+[$otherLab] = signupHttp('/lab');
+formCheck($otherLab->getStatusCode() === 200 && !str_contains($otherLab->getContent(),'Private company fixture') && !str_contains($otherLab->getContent(),'Private business description fixture') && str_contains($otherLab->getContent(),'Other owner company fixture'), 'Lab prefill reads only the current owner profile across account changes');
 
 signupGuestSession();
 $beforeDenied = [User::count(), UserBusinessProfile::count(), UserEntitlement::count(), count($registered), count($logins)];

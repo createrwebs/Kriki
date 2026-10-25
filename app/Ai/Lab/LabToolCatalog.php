@@ -57,8 +57,8 @@ final class LabToolCatalog
                 'count' => ['type' => 'integer', 'description' => 'How many photographs to return (1–8, default 4)'],
                 'orientation' => ['type' => 'string', 'enum' => ['landscape', 'portrait', 'square'], 'description' => 'Optional crop hint'],
             ], ['query']),
-            $this->fn('survey_datastore', 'Inspect the connected data plane (Supabase). Returns connection status, public tables/columns and publishable client env (URL + anon key). Raw SQL revisions are disabled; managed schema changes require a project-scoped proposal and owner Apply. Call before file edits needing auth/CRUD; never invent tables or expose steward/service-role keys.', [
-                'fresh' => ['type' => 'boolean', 'description' => 'Skip the short schema cache and re-read the live project'],
+            $this->fn('survey_datastore', 'Inspect only the current saved Lab project module registrations and connection status. This is local metadata, not a live schema verification. External tables and remote-wide browser credentials are unavailable without a reviewed project mapping. Use fixed managed widgets/APIs; never invent tables or write a direct Supabase client. Schema changes require a project-scoped proposal and owner Apply.', [
+                'fresh' => ['type' => 'boolean', 'description' => 'Refresh current project registration metadata'],
             ], []),
             $this->fn('github_status', 'Read the GitHub connection and this project remote (linked account, owner/repo/branch, local vs remote tree). Call before push/pull/fork when the user mentions GitHub, git, or version control.', [
                 'compare' => ['type' => 'boolean', 'description' => 'Include local vs GitHub tree (added/modified/removed)'],

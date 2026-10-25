@@ -1,0 +1,44 @@
+$kind: http-request
+description: ""
+url: "{{baseUrl}}/lab/:project/modules/:module/products/:product"
+method: PATCH
+headers:
+  - key: Cookie
+    value: "{{ownerCookieName}}={{ownerSession}}"
+  - key: X-CSRF-TOKEN
+    value: "{{csrfToken}}"
+    disabled: false
+    description: "(Required) "
+  - key: Content-Type
+    value: application/json
+  - key: Accept
+    value: application/json
+pathVariables:
+  - key: project
+    value: 34c9f942-d901-6272-1761-67c2ee5e8e3a
+    disabled: false
+    description: "(Required) "
+  - key: module
+    value: 34c9f942-d901-6272-1761-67c2ee5e8e3a
+    disabled: false
+    description: "(Required) "
+  - key: product
+    value: 34c9f942-d901-6272-1761-67c2ee5e8e3a
+    disabled: false
+    description: "(Required) "
+body:
+  type: json
+  content: |-
+    {
+      "expected_version": 1457,
+      "sku": "bJh8tKTfDtet8RSFiojsFFmaj3DCLHEHCiE9YILmt",
+      "title": "string",
+      "price_satang": 45061345,
+      "active": false,
+      "description": "string"
+    }
+auth:
+  type: noauth
+settings: {}
+examples: ./.resources/update Owner Product.resources/examples
+order: 3000

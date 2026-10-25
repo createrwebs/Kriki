@@ -4,9 +4,9 @@
 }
 body {
   margin: 0;
-  background: #f4f6f5;
-  color: #17251e;
-  font-family: Sora, system-ui, sans-serif;
+  background: #eef3ef;
+  color: #19352b;
+  font-family: Sora, 'Noto Sans Thai', system-ui, sans-serif;
   font-size: 14px;
   line-height: 1.6;
 }
@@ -88,12 +88,12 @@ h3 {
 }
 h3 > span {
   font-weight: 400;
-  color: #65736b;
+  color: #5b6e63;
   margin-left: 5px;
 }
 .builder-header {
-  min-height: 84px;
-  padding: 18px 32px;
+  min-height: 76px;
+  padding: 16px 32px;
   background: #fff;
   border-bottom: 1px solid #dce4de;
   display: flex;
@@ -102,10 +102,10 @@ h3 > span {
   gap: 20px;
 }
 .builder-brand {
-  font-size: 25px;
-  font-weight: 700;
-  letter-spacing: -1.5px;
-  color: #17251e;
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -1px;
+  color: #19352b;
   display: flex;
   align-items: center;
   gap: 18px;
@@ -114,9 +114,16 @@ h3 > span {
   font-size: 12px;
   letter-spacing: 0;
   font-weight: 400;
-  color: #65736b;
+  color: #5b6e63;
   border-left: 1px solid #dce4de;
   padding-left: 18px;
+}
+.builder-brand > img {
+  display: block;
+  width: 145px;
+  height: auto;
+  border-radius: 2px;
+  background: #fff;
 }
 .builder-header-actions {
   display: flex;
@@ -125,7 +132,7 @@ h3 > span {
   font-size: 12px;
 }
 .builder-save-state {
-  color: #65736b;
+  color: #5b6e63;
 }
 .builder-primary {
   background: #23714a;
@@ -140,7 +147,7 @@ h3 > span {
 .builder-shell {
   max-width: 1680px;
   margin: auto;
-  padding: 32px;
+  padding: 28px 32px;
 }
 .builder-intro {
   display: flex;
@@ -150,11 +157,11 @@ h3 > span {
   margin-bottom: 14px;
 }
 .builder-intro p {
-  color: #65736b;
+  color: #5b6e63;
   margin-top: 8px;
 }
 .builder-disclosure {
-  color: #65736b;
+  color: #5b6e63;
   font-size: 12px;
   margin-bottom: 24px;
 }
@@ -220,8 +227,8 @@ h3 > span {
   font-weight: 600;
 }
 .builder-choice span {
-  font-size: 11px;
-  color: #65736b;
+  font-size: 12px;
+  color: #5b6e63;
   line-height: 1.8;
 }
 .selected {
@@ -255,11 +262,11 @@ h3 > span {
 }
 .builder-template > span:not(.builder-template-map) {
   font-size: 12px;
-  color: #65736b;
+  color: #5b6e63;
   line-height: 1.8;
 }
 .builder-template > small {
-  font-size: 11px;
+  font-size: 12px;
   color: #23714a;
 }
 .builder-template-map {
@@ -293,7 +300,7 @@ h3 > span {
   min-width: 0;
 }
 .builder-resume > p {
-  color: #65736b;
+  color: #5b6e63;
   font-size: 12px;
   margin: 7px 0 18px;
 }
@@ -308,8 +315,8 @@ h3 > span {
   overflow-wrap: anywhere;
 }
 .builder-resume > button > span {
-  font-size: 11px;
-  color: #65736b;
+  font-size: 12px;
+  color: #5b6e63;
 }
 .builder-field {
   display: flex;
@@ -329,7 +336,7 @@ h3 > span {
   border-radius: 6px;
   padding: 9px 10px;
   background: white;
-  color: #17251e;
+  color: #19352b;
   font-size: 13px;
   font-weight: 400;
   min-width: 0;
@@ -338,19 +345,19 @@ h3 > span {
   line-height: 1.7;
 }
 .builder-field input:disabled {
-  background: #f4f6f5;
+  background: #eef3ef;
 }
 .builder-workspace {
   display: grid;
-  grid-template-columns: 350px minmax(0, 1fr);
+  grid-template-columns: 360px minmax(0, 1fr);
   align-items: start;
   gap: 24px;
 }
 .builder-editor {
   background: white;
   border: 1px solid #dce4de;
-  border-radius: 10px;
-  padding: 22px;
+  border-radius: 14px;
+  padding: 24px;
   min-width: 0;
 }
 .builder-editor-top {
@@ -360,12 +367,12 @@ h3 > span {
   gap: 10px;
 }
 .builder-editor-top > button {
-  font-size: 11px;
+  font-size: 12px;
   padding: 5px 9px;
 }
 .builder-hint {
-  color: #65736b;
-  font-size: 11px;
+  color: #5b6e63;
+  font-size: 12px;
   margin: 8px 0 14px;
   line-height: 1.7;
 }
@@ -394,7 +401,7 @@ h3 > span {
   margin: 15px 0;
 }
 .builder-page-tabs > button {
-  font-size: 11px;
+  font-size: 12px;
   padding: 6px 9px;
   max-width: 100%;
   overflow-wrap: anywhere;
@@ -424,7 +431,7 @@ h3 > span {
 .builder-row-actions > button,
 .builder-item > button,
 .builder-section > button {
-  font-size: 10px;
+  font-size: 12px;
   padding: 5px 8px;
 }
 .builder-danger {
@@ -443,8 +450,8 @@ h3 > span {
 }
 .builder-section > summary small {
   display: block;
-  color: #65736b;
-  font-size: 10px;
+  color: #5b6e63;
+  font-size: 12px;
   padding-left: 15px;
 }
 .builder-item {
@@ -453,7 +460,7 @@ h3 > span {
   margin: 14px 0;
 }
 .builder-validation {
-  font-size: 11px;
+  font-size: 12px;
   background: #fff3f0;
   color: #914131;
   padding: 12px;
@@ -472,8 +479,8 @@ h3 > span {
   padding: 6px 0 21px;
 }
 .builder-preview-toolbar p {
-  font-size: 11px;
-  color: #65736b;
+  font-size: 12px;
+  color: #5b6e63;
   margin-top: 5px;
 }
 .builder-view-switch {
@@ -488,7 +495,7 @@ h3 > span {
 .builder-view-switch > button {
   border-color: transparent;
   background: transparent;
-  font-size: 11px;
+  font-size: 12px;
   padding: 6px 10px;
 }
 .builder-view-switch > button[aria-pressed="true"] {
@@ -514,12 +521,12 @@ h3 > span {
   border-radius: 0;
   background: transparent;
   text-align: left;
-  font-size: 11px;
+  font-size: 12px;
   overflow-wrap: anywhere;
 }
 .bp-page-label > span {
-  color: #65736b;
-  font-size: 10px;
+  color: #5b6e63;
+  font-size: 12px;
 }
 .bp-page-label > span:last-child {
   margin-left: auto;
@@ -551,7 +558,7 @@ h3 > span {
   font-size: 23px;
 }
 .bp-overview .bp-section p {
-  font-size: 10px;
+  font-size: 12px;
 }
 .bp-overview .bp-items {
   grid-template-columns: 1fr;
@@ -620,7 +627,7 @@ h3 > span {
     gap: 13px;
   }
   .builder-save-state {
-    font-size: 10px;
+    font-size: 12px;
   }
   .builder-shell {
     padding: 26px 22px;
@@ -679,7 +686,7 @@ h3 > span {
     flex-wrap: wrap;
   }
   .builder-header-actions .builder-primary {
-    font-size: 11px;
+    font-size: 12px;
     padding: 8px 11px;
   }
   .builder-save-state {
@@ -696,12 +703,12 @@ h3 > span {
     font-size: 12px;
   }
   .builder-intro .builder-secondary {
-    font-size: 11px;
+    font-size: 12px;
     padding: 7px 10px;
     flex-shrink: 0;
   }
   .builder-disclosure {
-    font-size: 11px;
+    font-size: 12px;
   }
   .builder-start > main {
     padding: 18px;

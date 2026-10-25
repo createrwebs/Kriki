@@ -32,6 +32,7 @@ final class SupabaseModuleInstaller
         abort_unless($response->successful() && is_array($binding) && count($binding) === 1
             && ($binding[0]['project_uuid'] ?? null) === $project->uuid && ($binding[0]['module_uuid'] ?? null) === $module->uuid
             && ($binding[0]['schema_version'] ?? null) === ModuleCatalog::get($module->key)['schema_version'], 503, 'Module registration could not be verified. Retry this approved operation.');
+        if ($module->key === 'manual_payments') app(PrivateSlipStorage::class)->verifyBucket($module);
         return ['project_uuid' => $project->uuid, 'module_uuid' => $module->uuid, 'schema_version' => $binding[0]['schema_version'], 'verified' => true];
     }
 }

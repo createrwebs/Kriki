@@ -1,4 +1,6 @@
 import { zipSync } from 'fflate'
+import { loadModuleBuildContext, verifyModuleBuildSources, moduleArtifactManifest } from './moduleArtifact.js'
+import { acquireBuildLease } from './operationLease'
 import { getLabRuntime } from './labRuntime'
 import { pauseLabDevServerForPublish, prepareLabGuestForBuild } from './labAutostart'
 import { resolveEsbuildPublishPlan, writeEsbuildPublishScript } from './publishEsbuild'
@@ -336,13 +338,15 @@ async function walkGuestDirectory(pod, dirPath, prefix, out) {
  * @param {any} pod
  * @param {string} rootPath
  */
-async function zipGuestDirectory(pod, rootPath) {
+async function zipGuestDirectory(pod, rootPath, context = null) {
     const files = {}
     await walkGuestDirectory(pod, rootPath, '', files)
     if (! Object.keys(files).length) {
         throw new Error('The production build folder is empty.')
     }
 
+    const manifest = await moduleArtifactManifest(files, context)
+    if (manifest) files['.krikkit-artifact.json'] = manifest
     const zipped = zipSync(files, { level: 1 })
     return new Blob([zipped], { type: 'application/zip' })
 }
@@ -373,20 +377,27 @@ export async function buildLabPublishArtifact(opts = {}) {
         if (typeof opts.onLog === 'function') opts.onLog(line)
     }
 
-    suspendLabMemoryForPublish()
-    note('Publish build started.')
-    pauseLabDevServerForPublish()
-    note('Preview paused to free memory.')
-    await sleepMs(350)
-
+    const projectUuid = opts.projectUuid || location.pathname.match(/^\/lab\/([a-f0-9-]{36})(?:\/|$)/i)?.[1]
+        || JSON.parse(document.getElementById('lab-bootstrap')?.textContent || document.getElementById('lab-preview-bootstrap')?.textContent || 'null')?.uuid
+    const lease = await acquireBuildLease(projectUuid, opts.signal)
+    let successful = false
     try {
+        suspendLabMemoryForPublish()
+        note('Publish build started.')
+        pauseLabDevServerForPublish()
+        note('Preview paused to free memory.')
+        await sleepMs(350)
+        lease.assertActive()
         const { pod, pkg } = await prepareLabGuestForBuild({
             getFiles: opts.getFiles,
             onPhase,
             onLog: opts.onLog,
-            signal: opts.signal,
+            signal: lease.signal,
             light: true,
         })
+        lease.assertActive()
+        const moduleContext = await loadModuleBuildContext(projectUuid)
+        await verifyModuleBuildSources(pod, moduleContext)
 
         if (! getLabRuntime()) {
             throw new Error('Lab runtime is not ready.')
@@ -417,12 +428,13 @@ export async function buildLabPublishArtifact(opts = {}) {
         }
 
         const buildStarted = Date.now()
+        lease.assertActive()
         let proc
         if (buildPlan.mode === 'esbuild') {
             await writeEsbuildPublishScript(pod, buildPlan)
             proc = await pod.spawn('node', ['.__krikkit_esbuild_publish__.mjs'], {
                 cwd: '/',
-                signal: opts.signal,
+                signal: lease.signal,
                 env: {
                     CI: 'true',
                     NODE_ENV: 'production',
@@ -433,7 +445,7 @@ export async function buildLabPublishArtifact(opts = {}) {
             await writeProgrammaticViteBuildScript(pod, buildPlan)
             proc = await pod.spawn('node', ['.__krikkit_publish_build__.mjs'], {
                 cwd: '/',
-                signal: opts.signal,
+                signal: lease.signal,
                 env: {
                     CI: 'true',
                     NODE_ENV: 'production',
@@ -443,7 +455,7 @@ export async function buildLabPublishArtifact(opts = {}) {
         } else {
             proc = await pod.spawn(buildPlan.cmd, buildPlan.args, {
                 cwd: '/',
-                signal: opts.signal,
+                signal: lease.signal,
                 env: {
                     CI: 'true',
                     NODE_ENV: 'production',
@@ -456,6 +468,7 @@ export async function buildLabPublishArtifact(opts = {}) {
         proc.on?.('error', pushLog)
 
         const result = await proc.completion
+        lease.assertActive()
         const buildMs = Date.now() - buildStarted
         note(`Build exited with code ${result?.exitCode ?? 1} (${buildMs}ms).`)
 
@@ -495,20 +508,23 @@ export async function buildLabPublishArtifact(opts = {}) {
 
         onPhase('pack')
         note('Waiting for build output…')
-        const distRoot = await waitForDistRoot(pod, { signal: opts.signal, onLog: note })
+        const distRoot = await waitForDistRoot(pod, { signal: lease.signal, onLog: note })
         if (! await isPublishOutputRoot(pod, distRoot)) {
             throw new Error('The production build folder looks invalid. Expected dist/index.html, not project source files.')
         }
-        const blob = await zipGuestDirectory(pod, distRoot)
+        await verifyModuleBuildSources(pod, moduleContext)
+        const blob = await zipGuestDirectory(pod, distRoot, moduleContext)
         if (blob.size > MAX_ZIP_BYTES) {
             throw new Error(`The production build is too large to upload (${formatBytes(blob.size)}). Remove unused assets or raise LAB_PUBLISH_ARTIFACT_MAX_BYTES on the server.`)
         }
         note(`Packaged ${formatBytes(blob.size)} from ${distRoot.replace(/^\//, '')}/`)
         onPhase('pack-done', { bytes: blob.size })
-
+        lease.assertActive()
+        successful = true
         return blob
     } finally {
         resumeLabMemoryAfterPublish()
+        try { await lease.finish(successful) } catch (error) { if (successful) throw error }
     }
 }
 

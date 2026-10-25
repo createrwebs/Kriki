@@ -7,9 +7,16 @@ use App\Ai\Data\ChatRequest;
 use App\Ai\Lab\ThoughtBlockParser;
 use App\Ai\ModelCatalog;
 use App\Ai\ProviderFactory;
+use App\Ai\Settings\AiSettingsRepository;
+use App\Entitlement\EntitlementCatalog;
+use App\Entitlement\EntitlementGate;
+use App\Entitlement\Exceptions\EntitlementDeniedException;
+use App\Entitlement\LabCreditMeter;
 use App\Http\Controllers\Controller;
 use App\Lab\Builder\BlueprintSchema;
 use App\Lab\Builder\TemplateCatalog;
+use App\Models\User;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -25,7 +32,17 @@ final class WebsiteBuilderAiController extends Controller
         TemplateCatalog $catalogService,
         ModelCatalog $models,
         ProviderFactory $providers,
+        AiSettingsRepository $settings,
+        EntitlementGate $entitlements,
+        LabCreditMeter $credits,
     ): JsonResponse {
+        abort_unless($request->user() instanceof User, 401);
+        $request->validate([
+            'prompt' => ['nullable', 'string', 'max:2000'],
+            'scope' => ['sometimes', 'string', 'in:all,page,section'],
+            'page_id' => ['nullable', 'uuid'],
+            'section_id' => ['nullable', 'uuid'],
+        ]);
         $catalog = $catalogService->all();
         $rawBlueprint = $request->input('blueprint');
         if (! is_array($rawBlueprint)) {
@@ -42,25 +59,27 @@ final class WebsiteBuilderAiController extends Controller
         $prompt = mb_substr($prompt, 0, 2000);
 
         $scope = (string) $request->input('scope', 'all');
-        if (! in_array($scope, ['all', 'page', 'section'], true)) {
-            $scope = 'all';
-        }
         $pageId = $request->input('page_id') ? (string) $request->input('page_id') : null;
         $sectionId = $request->input('section_id') ? (string) $request->input('section_id') : null;
 
-        $baseBlueprint = $this->sanitizeBlueprint($rawBlueprint, $rawBlueprint, $catalog);
-        $baseBlueprint = $schema->validate($baseBlueprint);
+        $baseBlueprint = $schema->validate($rawBlueprint);
+        // Validate actual selected identities before sending any content to a provider.
+        $this->scopeBlueprint($baseBlueprint, $baseBlueprint, $scope, $pageId, $sectionId);
 
         $usedLlm = false;
         $candidate = null;
 
         try {
-            $llmResult = $this->callLlm($prompt, $scope, $pageId, $sectionId, $baseBlueprint, $catalog, $models, $providers);
+            $llmResult = $this->callLlm($prompt, $scope, $pageId, $sectionId, $baseBlueprint, $catalog, $models, $providers,
+                $settings, $entitlements, $credits, $request->user());
             if (is_array($llmResult)) {
                 $candidate = $this->sanitizeBlueprint($llmResult, $baseBlueprint, $catalog);
+                $candidate = $this->scopeBlueprint($baseBlueprint, $candidate, $scope, $pageId, $sectionId);
                 $candidate = $schema->validate($candidate);
                 $usedLlm = true;
             }
+        } catch (EntitlementDeniedException|QueryException $error) {
+            throw $error;
         } catch (Throwable) {
             $candidate = null;
         }
@@ -68,6 +87,7 @@ final class WebsiteBuilderAiController extends Controller
         if ($candidate === null) {
             $smartEdited = $this->applySmartPromptEdits($baseBlueprint, $prompt, $scope, $pageId, $sectionId, $catalog);
             $candidate = $this->sanitizeBlueprint($smartEdited, $baseBlueprint, $catalog);
+            $candidate = $this->scopeBlueprint($baseBlueprint, $candidate, $scope, $pageId, $sectionId);
             $candidate = $schema->validate($candidate);
         }
 
@@ -76,8 +96,29 @@ final class WebsiteBuilderAiController extends Controller
             'source' => $usedLlm ? 'ai' : 'smart-assistant',
             'message' => $usedLlm
                 ? 'AI ปรับปรุงโครงสร้างและเนื้อหาหน้าเว็บตามคำสั่งเรียบร้อยแล้ว'
-                : 'ปรับปรุงโครงสร้างและเนื้อหาตามคำสั่งเรียบร้อยแล้ว',
+                : 'ตัวช่วยในเครื่องปรับแบบร่างตามคำสั่งแล้ว ครั้งนี้ไม่ได้ใช้ผลลัพธ์จาก AI ภายนอก',
         ])->header('Cache-Control', 'private, no-store');
+    }
+
+    private function scopeBlueprint(array $base, array $candidate, string $scope, ?string $pageId, ?string $sectionId): array
+    {
+        if ($scope === 'all') return $candidate;
+        $pageIndex = array_search($pageId, array_column($base['pages'], 'id'), true);
+        if ($pageIndex === false) throw ValidationException::withMessages(['page_id' => 'Choose an existing page for this edit.']);
+        $candidatePage = collect($candidate['pages'])->first(fn(array $page) => strtolower($page['id']) === strtolower($pageId));
+        if ($candidatePage === null) throw ValidationException::withMessages(['blueprint' => 'The edited result omitted the selected page.']);
+        if ($scope === 'page') {
+            $candidatePage['id'] = $base['pages'][$pageIndex]['id'];
+            $base['pages'][$pageIndex] = $candidatePage;
+            return $base;
+        }
+        $sectionIndex = array_search($sectionId, array_column($base['pages'][$pageIndex]['sections'], 'id'), true);
+        if ($sectionIndex === false) throw ValidationException::withMessages(['section_id' => 'Choose an existing section on the selected page.']);
+        $candidateSection = collect($candidatePage['sections'])->first(fn(array $section) => strtolower($section['id']) === strtolower($sectionId));
+        if ($candidateSection === null) throw ValidationException::withMessages(['blueprint' => 'The edited result omitted the selected section.']);
+        $candidateSection['id'] = $base['pages'][$pageIndex]['sections'][$sectionIndex]['id'];
+        $base['pages'][$pageIndex]['sections'][$sectionIndex] = $candidateSection;
+        return $base;
     }
 
     public function uploadImage(Request $request): JsonResponse
@@ -230,20 +271,25 @@ final class WebsiteBuilderAiController extends Controller
         array $catalog,
         ModelCatalog $models,
         ProviderFactory $providers,
+        AiSettingsRepository $settings,
+        EntitlementGate $entitlements,
+        LabCreditMeter $credits,
+        User $actor,
     ): ?array {
         $modelId = $models->defaultId();
         $model = $models->get($modelId);
-        if (! $providers->isConfigured($model->provider)) {
-            foreach ($models->all() as $candidateModel) {
-                if ($providers->isConfigured($candidateModel->provider)) {
+        if (! $model->available || ! $settings->isEnabled($model->provider)) {
+            foreach ($models->all(true) as $candidateModel) {
+                if ($settings->isEnabled($candidateModel->provider)) {
                     $model = $candidateModel;
                     break;
                 }
             }
         }
-        if (! $providers->isConfigured($model->provider)) {
+        if (! $model->available || ! $settings->isEnabled($model->provider)) {
             return null;
         }
+        $entitlements->assertQuota($actor, EntitlementCatalog::LAB_CREDITS);
 
         $system = <<<'SYS'
 You are an expert Thai & English Website Blueprint Architect for Krikkit Builder.
@@ -291,6 +337,8 @@ SYS;
                 'prompt_cache_floor' => false,
             ],
         ));
+        $usage = is_array($response->meta['usage'] ?? null) ? $response->meta['usage'] : [];
+        $entitlements->settle($actor, EntitlementCatalog::LAB_CREDITS, $credits->quote($usage, $model->id, $response->toolCalls));
 
         $parsedThought = (new ThoughtBlockParser)->parse($response->content);
         $rawText = trim((string) ($parsedThought['content'] ?? $response->content));
@@ -362,7 +410,7 @@ SYS;
         }
 
         // 3. Add a new page if requested (and pages < 5)
-        if (preg_match('/(เพิ่มหน้า|สร้างหน้าใหม่|มีหน้า)\s*([^\n,.]{2,30})/u', $prompt, $pageMatch) && count($next['pages']) < 5) {
+        if ($scope === 'all' && preg_match('/(เพิ่มหน้า|สร้างหน้าใหม่|มีหน้า)\s*([^\n,.]{2,30})/u', $prompt, $pageMatch) && count($next['pages']) < 5) {
             $requestedTitle = trim($pageMatch[2]);
             $alreadyExists = false;
             foreach ($next['pages'] as $p) {

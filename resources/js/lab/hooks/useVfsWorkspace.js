@@ -74,13 +74,13 @@ async function loadVfsPaths(uuid, paths) {
  * Workspace VFS, editor buffers, dirty/save, AI stream mutex, panel mode.
  */
 export function useVfsWorkspace({ projectUuid, projectTitle, building }) {
-    const [workspaceView, setWorkspaceView] = useState({
-        panel: 'preview',
+    const [workspaceView, setWorkspaceView] = useState(() => ({
+        panel: typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('panel') === 'modules' ? 'modules' : 'preview',
         tabId: null,
         consoleIds: [],
         editorPaths: [],
         activePath: null,
-    })
+    }))
     /** rail = chat | stage; draft = chat | editor | files rail (chat stays left) */
     const [composeMode, setComposeMode] = useState('rail')
     /** Skip flex morph unless opening from the full Files stage. */
@@ -301,6 +301,13 @@ export function useVfsWorkspace({ projectUuid, projectTitle, building }) {
         if (asDraft) {
             setDraftBuffers((prev) => {
                 const next = { ...prev, ...batch }
+                draftBuffersRef.current = next
+                return next
+            })
+        } else if (options.clearDrafts) {
+            setDraftBuffers(prev => {
+                const next = { ...prev }
+                for (const path of paths) delete next[path]
                 draftBuffersRef.current = next
                 return next
             })

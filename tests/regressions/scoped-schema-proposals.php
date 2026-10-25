@@ -110,4 +110,27 @@ formCheck($http($url.'/apply', 'POST', ['impact_hash' => $proposal->impact_hash,
 formCheck($http($url.'/apply', 'POST', ['impact_hash' => $proposal->impact_hash, 'expected_revision' => 1])->getStatusCode() === 200, 'HTTP Apply replay returns receipt');
 formCheck($http($url.'/cancel', 'POST', '{}')->getStatusCode() === 409, 'Applied proposal cannot be cancelled');
 formCheck($http('/lab/'.$project->uuid.'/modules/'.$module->uuid.'/proposals', 'POST', ['expected_revision' => 2, 'sql' => 'DROP TABLE fictional'])->getStatusCode() === 422, 'Proposal API never accepts caller SQL');
+
+App\Models\LabOperationLease::query()->update(['status' => 'completed']); // Isolated fixture state only.
+$operationUrl = '/lab/'.$project->uuid.'/operations';
+$operationBody = ['operation' => 'build', 'operation_key' => (string) Str::uuid()];
+formCheck($http($operationUrl, 'POST', $operationBody, false)->getStatusCode() === 419, 'Build admission requires CSRF');
+$started = $http($operationUrl, 'POST', $operationBody);
+$admission = json_decode($started->getContent(), true);
+formCheck($started->getStatusCode() === 200 && Str::isUuid($admission['uuid'] ?? ''), 'Real build dispatch obtains server lease');
+formCheck($http($operationUrl, 'POST', $operationBody)->getStatusCode() === 409, 'Repeated dispatch cannot execute one active build twice');
+$secondAdmission = $http('/lab/'.$sibling->uuid.'/operations', 'POST', ['operation' => 'build','operation_key' => (string) Str::uuid()]);
+formCheck($secondAdmission->getStatusCode() === 200, 'Second build admitted across same account projects');
+formCheck($http($operationUrl, 'POST', ['operation' => 'build','operation_key' => (string) Str::uuid()])->getStatusCode() === 429, 'Third browser build blocked authoritatively');
+$plan->grants()->updateOrCreate(['code' => App\Entitlement\EntitlementCatalog::GITHUB_IMPORT], ['kind' => 'feature','allowed' => true,'window' => 'none']); $owner->unsetRelation('entitlement');
+formCheck($http('/lab/github/import', 'POST', ['url' => 'https://github.com/fictional/fixture','project_uuid' => $project->uuid])->getStatusCode() === 429, 'Real import handler shares build quota before reset or upstream call');
+formCheck($http($operationUrl.'/'.$admission['uuid'], 'PATCH', ['state' => 'active'])->getStatusCode() === 200, 'Owner can renew active build with heartbeat');
+$project->forceFill(['frozen_at' => now()])->save();
+formCheck($http($operationUrl.'/'.$admission['uuid'], 'PATCH', ['state' => 'active'])->getStatusCode() === 403, 'Heartbeat rechecks frozen project');
+formCheck($http($operationUrl.'/'.$admission['uuid'], 'PATCH', ['state' => 'failed'])->getStatusCode() === 200, 'Frozen owner may release running build');
+$project->forceFill(['frozen_at' => null])->save();
+$as($other); formCheck($http($operationUrl.'/'.$admission['uuid'], 'PATCH', ['state' => 'completed'])->getStatusCode() === 403, 'Foreign account cannot finalize another build');
+$as($owner); $project->forceFill(['project_type' => 'php'])->save();
+formCheck($http($operationUrl, 'POST', ['operation' => 'build','operation_key' => (string) Str::uuid()])->getStatusCode() === 423, 'Source-only project cannot request execution admission');
+$project->forceFill(['project_type' => 'react'])->save();
 formResult('scoped schema approvals and operation leases over Postman HTTP simulation');

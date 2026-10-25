@@ -1,0 +1,32 @@
+$kind: http-request
+description: Manual-payments module only. Checks at most10 expired staged/cleanup/abandoned receipts. Claims a cleanup lease before deleting an exact uncommitted object; committed evidence is retained. Abandoned paths remain immutable tombstones for delayed worker cleanup. Available after disable, freeze and downgrade.
+url: "{{baseUrl}}/lab/:project/modules/:module/slip-uploads/reconcile"
+method: POST
+headers:
+  - key: Cookie
+    value: "{{ownerCookieName}}={{ownerSession}}"
+  - key: X-CSRF-TOKEN
+    value: "{{csrfToken}}"
+    disabled: false
+    description: "(Required) "
+  - key: Content-Type
+    value: application/json
+  - key: Accept
+    value: application/json
+pathVariables:
+  - key: project
+    value: 42f952c6-86e7-67ab-8842-f8dac3a02326
+    disabled: false
+    description: "(Required) "
+  - key: module
+    value: 42f952c6-86e7-67ab-8842-f8dac3a02326
+    disabled: false
+    description: "(Required) "
+body:
+  type: json
+  content: "{}"
+auth:
+  type: noauth
+settings: {}
+examples: ./.resources/reconcile Private Slip Uploads.resources/examples
+order: 5000

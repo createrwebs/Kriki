@@ -1,0 +1,44 @@
+$kind: http-request
+description: Owner session supplies actor. Acceptance requires bank_verified true and matching saved total. Rejection requires nonblank reason. Row CAS and order locks prevent conflicting decisions or reversal of a paid order.
+url: "{{baseUrl}}/lab/:project/modules/:module/payment-attempts/:attempt/review"
+method: POST
+headers:
+  - key: Cookie
+    value: "{{ownerCookieName}}={{ownerSession}}"
+  - key: Cookie
+    value: "{{ownerCookieName}}={{ownerSession}}"
+  - key: X-CSRF-TOKEN
+    value: "{{csrfToken}}"
+    disabled: false
+    description: "(Required) "
+  - key: Content-Type
+    value: application/json
+  - key: Accept
+    value: application/json
+pathVariables:
+  - key: project
+    value: 1b92dfdd-62f5-daab-74f6-5c8599acb5ec
+    disabled: false
+    description: "(Required) "
+  - key: module
+    value: 1b92dfdd-62f5-daab-74f6-5c8599acb5ec
+    disabled: false
+    description: "(Required) "
+  - key: attempt
+    value: 1b92dfdd-62f5-daab-74f6-5c8599acb5ec
+    disabled: false
+    description: "(Required) "
+body:
+  type: json
+  content: |-
+    {
+      "expected_version": 3207,
+      "decision": "accepted",
+      "reason": "string",
+      "bank_verified": false
+    }
+auth:
+  type: noauth
+settings: {}
+examples: ./.resources/review Owner Payment.resources/examples
+order: 4000

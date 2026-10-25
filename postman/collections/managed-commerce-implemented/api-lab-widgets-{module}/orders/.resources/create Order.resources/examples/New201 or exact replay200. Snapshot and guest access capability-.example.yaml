@@ -1,0 +1,59 @@
+$kind: http-example
+name: New201 or exact replay200. Snapshot and guest access capability.
+request:
+  url: "{{baseUrl}}/api/lab-widgets/:module/orders"
+  method: POST
+  headers:
+    - key: Origin
+      value: https://JpjkWUDsSQFpCbihbw.bsy8GuMGleFP
+      disabled: false
+      description: (Required) Exact authorized publication origin. CORS permits Content-Type/Accept/X-Krikkit-Order-Token without credentials.
+    - key: Accept
+      value: application/json
+  pathVariables:
+    - key: module
+      value: 34c9f942-d901-6272-1761-67c2ee5e8e3a
+      disabled: false
+      description: "(Required) "
+  body:
+    type: json
+    content: |-
+      {
+        "idempotency_key": "17006de4-0211-ef26-b140-93fdbdb3905a",
+        "quote_uuid": "4cfb95b3-7563-6171-cb36-cf9a5ded94f0",
+        "customer_name": "string",
+        "customer_email": "qxc7aiXA8@wyYKXBqaWudUgctcK.myc",
+        "items": [
+          {
+            "product_uuid": "a18ea570-db7f-70b4-beee-d733618e8cbc",
+            "quantity": 1
+          }
+        ],
+        "customer_phone": "string",
+        "note": "string"
+      }
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "order": {
+          "uuid": "1805f0dd-58b6-9b8d-04bf-5b9cb7d1e630",
+          "reference": "string",
+          "customer_name": "string",
+          "total_satang": 70140819,
+          "currency": {},
+          "status": "paid",
+          "promptpay": {},
+          "latest_slip": {},
+          "created_at": "string",
+          "updated_at": "string"
+        },
+        "access_token": "e3cb7f9512eeb196d3c2bbd48262cb309f40cae8e81479645cde68dbaf535da1",
+        "replayed": true
+      }
+order: 1000

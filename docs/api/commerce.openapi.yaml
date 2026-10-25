@@ -1,0 +1,503 @@
+openapi: 3.1.0
+info:
+  title: Managed commerce implemented API
+  version: 0.4.0
+  description: >-
+    Current Laravel interface, locally verified on 2026-10-25. Business writes
+    remain gated off in production. Orders and manual payments require reviewed
+    schema v2. Quotes, owner revocation, private Storage receipts and five-minute
+    image viewing are implemented locally; live Supabase acceptance remains pending.
+    Every public request requires an exact authorized publication Origin and omits
+    platform cookies. Owner requests require the configured Laravel session and
+    CSRF token for mutations. All responses are no-store. Prices are integer THB
+    satang. Owner module keys must match the operation (catalog/orders/manual_payments).
+servers: [{url: /}]
+security: []
+paths:
+  /api/lab-widgets/{module}/storefront:
+    parameters: [{$ref: '#/components/parameters/Module'}, {$ref: '#/components/parameters/Origin'}]
+    get:
+      operationId: readStorefront
+      description: Active catalog products; checkout_ready intersects all effective order/payment policies. No query parameters.
+      responses:
+        '200':
+          description: Active products and masked recipient information only.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [products, currency, checkout_ready, payment]
+                properties:
+                  products: {type: array, maxItems: 100, items: {$ref: '#/components/schemas/PublicProduct'}}
+                  currency: {const: THB}
+                  checkout_ready: {type: boolean}
+                  payment: {type: [object, 'null'], description: 'method, payee_label, masked_recipient, instructions'}
+        default: {$ref: '#/components/responses/Error'}
+  /api/lab-widgets/{module}/quotes:
+    parameters: [{$ref: '#/components/parameters/Module'}, {$ref: '#/components/parameters/Origin'}]
+    post:
+      operationId: createQuote
+      description: >-
+        Maximum16KiB JSON. Only distinct product UUID/quantity lines are accepted.
+        Server calculates integer satang and snapshots product/payment versions.
+        Quote expires after10 minutes. No order is created by this request.
+        Rate10/min/IP/module and100/min/module, independently of order creation.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/QuoteRequest'}}}
+      responses:
+        '201':
+          description: Authoritative quote; no raw recipient or customer details.
+          content: {application/json: {schema: {type: object, required: [quote], properties: {quote: {$ref: '#/components/schemas/Quote'}}}}}
+        default: {$ref: '#/components/responses/Error'}
+  /api/lab-widgets/{module}/orders:
+    parameters: [{$ref: '#/components/parameters/Module'}, {$ref: '#/components/parameters/Origin'}]
+    post:
+      operationId: createOrder
+      description: >-
+        Maximum16KiB JSON. Requires an explicitly confirmed quote_uuid and matching
+        cart. Expired, consumed or changed product/payment versions return409;
+        obtain and confirm a fresh quote. Caller totals/recipient/status are rejected.
+        Same UUID+normalized payload replays an accepted snapshot even after quote
+        expiry/disable while guest capability remains valid; changed payload409.
+        A quote is consumed atomically by one creation key. Rate10/min/IP/module
+        and100/min/module. Preserve exact payload/key on ambiguous transport failures.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/CreateOrder'}}}
+      responses:
+        '201': {$ref: '#/components/responses/CreatedOrder'}
+        '200': {$ref: '#/components/responses/CreatedOrder'}
+        default: {$ref: '#/components/responses/Error'}
+  /api/lab-widgets/{module}/orders/{order}:
+    parameters: [{$ref: '#/components/parameters/Module'}, {$ref: '#/components/parameters/Order'}, {$ref: '#/components/parameters/Origin'}]
+    get:
+      operationId: readGuestOrder
+      security: [{OrderCapability: []}]
+      description: >-
+        No query parameters; tokens in URLs cannot authorize. Capability expires24h
+        from created_at; invalid/missing/expired/revoked/cross-order404. Authorized history
+        remains available after disable/downgrade/freeze with original datastore pin.
+      responses:
+        '200':
+          description: Saved order; no image, token hash or customer email/phone.
+          content: {application/json: {schema: {type: object, required: [order], properties: {order: {$ref: '#/components/schemas/GuestOrder'}}}}}
+        default: {$ref: '#/components/responses/Error'}
+  /api/lab-widgets/{module}/orders/{order}/slips:
+    parameters: [{$ref: '#/components/parameters/Module'}, {$ref: '#/components/parameters/Order'}, {$ref: '#/components/parameters/Origin'}]
+    post:
+      operationId: submitPaymentSlip
+      security: [{OrderCapability: []}]
+      description: >-
+        Maximum7100000 JSON bytes, decoded image5MiB and20MP. PNG/JPEG/WebP
+        decoded and re-encoded PNG without metadata. All mutable receipt fields
+        and normalized image hash participate in idempotency. Accepted/cancelled
+        order cannot receive a new attempt. Upload never marks paid. Rate5/min/order,
+        20/hour/order,100/hour/module. Missing image decoder503. A staged receipt
+        fences the private no-upsert PNG object. Commit atomically records attempt
+        and pending-review state. Ambiguous commit recovery never deletes committed
+        evidence; failed uncommitted cleanup remains for owner reconciliation.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/SlipSubmission'}}}
+      responses:
+        '201': {$ref: '#/components/responses/SlipReceipt'}
+        '200': {$ref: '#/components/responses/SlipReceipt'}
+        default: {$ref: '#/components/responses/Error'}
+  /lab/{project}/modules/{module}/products:
+    parameters: [{$ref: '#/components/parameters/Project'}, {$ref: '#/components/parameters/Module'}]
+    get:
+      operationId: listOwnerProducts
+      security: [{OwnerSession: []}]
+      responses:
+        '200': {$ref: '#/components/responses/OwnerList'}
+        default: {$ref: '#/components/responses/Error'}
+    post:
+      operationId: createOwnerProduct
+      security: [{OwnerSession: []}]
+      parameters: [{$ref: '#/components/parameters/Csrf'}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/CreateProduct'}}}
+      responses:
+        '201': {$ref: '#/components/responses/ProductReceipt'}
+        '200': {$ref: '#/components/responses/ProductReceipt'}
+        default: {$ref: '#/components/responses/Error'}
+  /lab/{project}/modules/{module}/products/{product}:
+    parameters: [{$ref: '#/components/parameters/Project'}, {$ref: '#/components/parameters/Module'}, {name: product, in: path, required: true, schema: {type: string, format: uuid}}]
+    patch:
+      operationId: updateOwnerProduct
+      security: [{OwnerSession: []}]
+      parameters: [{$ref: '#/components/parameters/Csrf'}]
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/UpdateProduct'}}}
+      responses:
+        '200': {$ref: '#/components/responses/ProductReceipt'}
+        default: {$ref: '#/components/responses/Error'}
+  /lab/{project}/modules/{module}/payment-settings:
+    parameters: [{$ref: '#/components/parameters/Project'}, {$ref: '#/components/parameters/Module'}]
+    get:
+      operationId: readOwnerPaymentSettings
+      security: [{OwnerSession: []}]
+      responses:
+        '200': {$ref: '#/components/responses/PaymentSettings'}
+        default: {$ref: '#/components/responses/Error'}
+    put:
+      operationId: updateOwnerPaymentSettings
+      security: [{OwnerSession: []}]
+      parameters: [{$ref: '#/components/parameters/Csrf'}]
+      description: Recipient normalizes to10 phone,13 national/tax or15 ewallet digits. CAS; does not alter saved order QR snapshots.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/UpdatePaymentSettings'}}}
+      responses:
+        '200': {$ref: '#/components/responses/PaymentSettings'}
+        default: {$ref: '#/components/responses/Error'}
+  /lab/{project}/modules/{module}/orders:
+    parameters: [{$ref: '#/components/parameters/Project'}, {$ref: '#/components/parameters/Module'}]
+    get:
+      operationId: listOwnerOrders
+      security: [{OwnerSession: []}]
+      parameters: [{name: status, in: query, schema: {$ref: '#/components/schemas/OrderStatus'}}, {$ref: '#/components/parameters/HistoryCursor'}]
+      description: >-
+        Twenty-five orders per keyset page, created_at DESC/uuid DESC. Pass the returned
+        opaque next_cursor unchanged. New arrivals do not shift an older-page cursor.
+        Unknown query fields422. Includes a bounded latest100-attempt summary across
+        the project; use per-order history for complete evidence. No image bytes,
+        signed URLs or private object paths. Module must be orders.
+      responses:
+        '200': {$ref: '#/components/responses/OwnerHistoryPage'}
+        default: {$ref: '#/components/responses/Error'}
+  /lab/{project}/modules/{module}/orders/{order}/payment-attempts:
+    parameters: [{$ref: '#/components/parameters/Project'}, {$ref: '#/components/parameters/Module'}, {$ref: '#/components/parameters/Order'}]
+    get:
+      operationId: listOwnerOrderPaymentAttempts
+      security: [{OwnerSession: []}]
+      parameters: [{$ref: '#/components/parameters/HistoryCursor'}]
+      description: >-
+        Orders module only. Fresh owner/project/module/order binding, then queries
+        only that order's manual-payments metadata. Twenty-five per keyset page,
+        uploaded_at DESC/uuid DESC. No image bytes, object paths or signed URLs.
+        Unknown/malformed query fields422. Owner history survives disable/freeze/downgrade.
+      responses:
+        '200': {$ref: '#/components/responses/OwnerHistoryPage'}
+        default: {$ref: '#/components/responses/Error'}
+  /lab/{project}/modules/{module}/orders/{order}/revoke-access:
+    parameters: [{$ref: '#/components/parameters/Project'}, {$ref: '#/components/parameters/Module'}, {$ref: '#/components/parameters/Order'}]
+    post:
+      operationId: revokeGuestOrderAccess
+      security: [{OwnerSession: []}]
+      parameters: [{$ref: '#/components/parameters/Csrf'}]
+      description: Idempotent owner revocation; records actor/time without changing payment state. Available after disable, downgrade or freeze. Module must be orders.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {type: object, additionalProperties: false}}}
+      responses:
+        '200':
+          description: Guest read/upload capability revoked.
+          content: {application/json: {schema: {type: object, required: [revoked], properties: {revoked: {const: true}}}}}
+        default: {$ref: '#/components/responses/Error'}
+  /lab/{project}/modules/{module}/payment-attempts/{attempt}/image:
+    parameters: [{$ref: '#/components/parameters/Project'}, {$ref: '#/components/parameters/Module'}, {name: attempt, in: path, required: true, schema: {type: string, format: uuid}}]
+    get:
+      operationId: readPrivatePaymentImage
+      security: [{OwnerSession: []}]
+      description: >-
+        No query parameters. Fresh owner/project/manual_payments scope and private
+        bucket checks. Exact pinned Storage URL expires in300 seconds. Does not
+        accept a caller object path. Legacy inline-only evidence returns legacy:true
+        and a relative owner-session legacy-image URL instead of a signed Storage URL.
+        The five-minute UI lifetime is not an access capability: every historical
+        image fetch requires a fresh owner session and scope check.
+      responses:
+        '200':
+          description: Private no-store signed Storage URL or relative historical owner-session URL.
+          content: {application/json: {schema: {type: object, required: [url, expires_at], properties: {url: {type: string, format: uri-reference}, expires_at: {type: string, format: date-time}, legacy: {type: boolean}}}}}
+        default: {$ref: '#/components/responses/Error'}
+  /lab/{project}/modules/{module}/payment-attempts/{attempt}/legacy-image:
+    parameters: [{$ref: '#/components/parameters/Project'}, {$ref: '#/components/parameters/Module'}, {name: attempt, in: path, required: true, schema: {type: string, format: uuid}}]
+    get:
+      operationId: readHistoricalPaymentImage
+      security: [{OwnerSession: []}]
+      description: >-
+        No query fields. Fresh owner/project/manual_payments/attempt checks on every
+        fetch. Inline historical evidence only; Storage-backed evidence404. Returns
+        normalized PNG, private no-store and nosniff. Preserves original evidence,
+        hashes, review state and retention. Available after freeze/disable/downgrade.
+      responses:
+        '200':
+          description: Authenticated historical proof image; URL grants no bearer access.
+          content: {image/png: {schema: {type: string, format: binary}}}
+        default: {$ref: '#/components/responses/Error'}
+  /lab/{project}/modules/build-context:
+    parameters: [{$ref: '#/components/parameters/Project'}]
+    get:
+      operationId: readManagedBuildContext
+      security: [{OwnerSession: []}]
+      description: >-
+        Owner only, no query fields. Returns context:null for sites without managed
+        widgets. Managed sites require authenticated SDK3 ownership manifest,
+        unchanged managed SDK/config and current ready schemas in the original pinned
+        datastore. Incompatible source or schema409. The guest builder verifies all
+        source_files hashes before and after build. Promotion revalidates context and
+        artifact file hashes; failure preserves the last-good deployment. No keys.
+      responses:
+        '200':
+          description: Exact source and module compatibility snapshot, or null for a plain site.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [context]
+                properties:
+                  context:
+                    type: [object, 'null']
+                    properties:
+                      version: {const: 1}
+                      project_uuid: {type: string, format: uuid}
+                      sdk_version: {const: 3}
+                      runtime_version: {const: krikkit-runtime-v1}
+                      modules: {type: object, additionalProperties: {type: object, required: [uuid, schema_version], properties: {uuid: {type: string, format: uuid}, schema_version: {type: integer}}}}
+                      source_hash: {type: string, pattern: '^[a-f0-9]{64}$'}
+                      source_files: {type: object, additionalProperties: {type: string, pattern: '^[a-f0-9]{64}$'}}
+        default: {$ref: '#/components/responses/Error'}
+  /lab/{project}/modules/{module}/embed:
+    parameters: [{$ref: '#/components/parameters/Project'}, {$ref: '#/components/parameters/Module'}]
+    get:
+      operationId: previewManagedWidgetSource
+      security: [{OwnerSession: []}]
+      parameters: [{name: route, in: query, required: true, schema: {type: string, maxLength: 250}, example: /shop}]
+      description: >-
+        Preview only, no writes. Route must be an existing generated page. Returns
+        proposed files, full expected_files SHA256/null snapshot and impact_hash.
+        Check every affected unsaved editor buffer before applying. Custom or
+        unrecognized SDK/wrapper source409; no overwrite. Unknown query fields422.
+      responses:
+        '200':
+          description: Exact proposed source and compare-and-swap snapshot.
+          content: {application/json: {schema: {type: object, required: [files, expected_files, impact_hash], properties: {files: {type: object, additionalProperties: {type: string}}, expected_files: {$ref: '#/components/schemas/SourceSnapshot'}, impact_hash: {type: string, pattern: '^[a-f0-9]{64}$'}}}}}
+        default: {$ref: '#/components/responses/Error'}
+    post:
+      operationId: applyManagedWidgetSource
+      security: [{OwnerSession: []}]
+      parameters: [{$ref: '#/components/parameters/Csrf'}]
+      description: >-
+        Maximum16KiB JSON. Recompute plan under the project write lock and compare
+        the complete expected_files and impact_hash before atomic source writes.
+        Any changed/missing file409. Returns installed files; compare editor buffers
+        again before merging. Preserve all buffers on conflict. Ordinary file tools
+        cannot write/delete the managed SDK. No SQL Apply or publication side effect.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [route, expected_app_hash, expected_files, impact_hash]
+              properties:
+                route: {type: string, maxLength: 250}
+                expected_app_hash: {type: string, pattern: '^[a-f0-9]{64}$'}
+                expected_files: {$ref: '#/components/schemas/SourceSnapshot'}
+                impact_hash: {type: string, pattern: '^[a-f0-9]{64}$'}
+      responses:
+        '200':
+          description: Installed source files after complete snapshot validation.
+          content: {application/json: {schema: {type: object, required: [files], properties: {files: {type: object, additionalProperties: {type: string}}}}}}
+        default: {$ref: '#/components/responses/Error'}
+  /lab/{project}/modules/{module}/slip-uploads/reconcile:
+    parameters: [{$ref: '#/components/parameters/Project'}, {$ref: '#/components/parameters/Module'}]
+    post:
+      operationId: reconcilePrivateSlipUploads
+      security: [{OwnerSession: []}]
+      parameters: [{$ref: '#/components/parameters/Csrf'}]
+      description: >-
+        Manual-payments module only. Checks at most10 expired staged/cleanup/abandoned
+        receipts. Claims a cleanup lease before deleting an exact uncommitted object;
+        committed evidence is retained. Abandoned paths remain immutable tombstones
+        for delayed worker cleanup. Available after disable, freeze and downgrade.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {type: object, additionalProperties: false}}}
+      responses:
+        '200':
+          description: Bounded cleanup result; pending objects may be retried later.
+          content: {application/json: {schema: {type: object, required: [checked, cleaned, pending], properties: {checked: {type: integer, minimum: 0, maximum: 10}, cleaned: {type: integer, minimum: 0, maximum: 10}, pending: {type: integer, minimum: 0, maximum: 10}}}}}
+        default: {$ref: '#/components/responses/Error'}
+  /lab/{project}/modules/{module}/payment-attempts/{attempt}/review:
+    parameters: [{$ref: '#/components/parameters/Project'}, {$ref: '#/components/parameters/Module'}, {name: attempt, in: path, required: true, schema: {type: string, format: uuid}}]
+    post:
+      operationId: reviewOwnerPayment
+      security: [{OwnerSession: []}]
+      parameters: [{$ref: '#/components/parameters/Csrf'}]
+      description: >-
+        Owner session supplies actor. Acceptance requires bank_verified true and
+        matching saved total. Rejection requires nonblank reason. Row CAS and
+        order locks prevent conflicting decisions or reversal of a paid order.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/Review'}}}
+      responses:
+        '200':
+          description: Immutable review and derived order state.
+          content: {application/json: {schema: {type: object, required: [review], properties: {review: {type: object}}}}}
+        default: {$ref: '#/components/responses/Error'}
+components:
+  securitySchemes:
+    OrderCapability: {type: apiKey, in: header, name: X-Krikkit-Order-Token, description: '64 lowercase hex; expires24h after order creation; store only in sessionStorage.'}
+    OwnerSession: {type: apiKey, in: cookie, name: laravel_session, description: 'Deployment-configured Laravel session cookie (SESSION_COOKIE may override this conventional name). Verified owner required; CSRF required on mutations.'}
+  parameters:
+    HistoryCursor: {name: cursor, in: query, schema: {type: string, maxLength: 256}, description: 'Opaque next_cursor from the previous page; omit for latest records. Retain the same status/order filter while paging.'}
+    Module: {name: module, in: path, required: true, schema: {type: string, format: uuid}}
+    Project: {name: project, in: path, required: true, schema: {type: string, format: uuid}}
+    Order: {name: order, in: path, required: true, schema: {type: string, format: uuid}}
+    Origin: {name: Origin, in: header, required: true, schema: {type: string, format: uri}, description: 'Exact authorized publication origin. CORS permits Content-Type/Accept/X-Krikkit-Order-Token without credentials.'}
+    Csrf: {name: X-CSRF-TOKEN, in: header, required: true, schema: {type: string}}
+  responses:
+    OwnerHistoryPage:
+      description: Scoped metadata history with stable timestamp/UUID keyset pagination.
+      content: {application/json: {schema: {type: object, required: [items, limit, next_cursor], properties: {items: {type: array, maxItems: 25, items: {type: object}}, limit: {const: 25}, next_cursor: {type: [string, 'null'], maxLength: 256}}}}}
+    Error:
+      description: '402 feature denied;403 origin/capability;404 missing/private;409 CAS/idempotency/not-ready;413 size;419 owner CSRF;422 validation;423 readiness/source-only;429 rate/concurrency;503 upstream/decoder unavailable.'
+      content: {application/json: {schema: {type: object, properties: {message: {type: string}, errors: {type: object}, code: {type: string}}}}}
+    CreatedOrder:
+      description: New201 or exact replay200. Snapshot and guest access capability.
+      content: {application/json: {schema: {type: object, required: [order, access_token, replayed], properties: {order: {$ref: '#/components/schemas/GuestOrder'}, access_token: {type: string, pattern: '^[a-f0-9]{64}$'}, replayed: {type: boolean}}}}}
+    SlipReceipt:
+      description: New201 or exact replay200; payment remains unverified.
+      content: {application/json: {schema: {type: object, required: [slip, replayed], properties: {replayed: {type: boolean}, slip: {type: object, required: [uuid, order_uuid, status, order_status], properties: {uuid: {type: string, format: uuid}, order_uuid: {type: string, format: uuid}, status: {type: string}, order_status: {$ref: '#/components/schemas/OrderStatus'}}}}}}}
+    OwnerList:
+      description: Private latest100 records, scoped to this project/module.
+      content: {application/json: {schema: {type: object, required: [items, limit], properties: {items: {type: array, maxItems: 100, items: {type: object}}, limit: {const: 100}}}}}
+    ProductReceipt:
+      description: Product UUID/version; creation also includes replayed.
+      content: {application/json: {schema: {type: object, required: [product], properties: {product: {type: object, properties: {product_uuid: {type: string, format: uuid}, version: {type: integer, minimum: 1}, replayed: {type: boolean}}}}}}}
+    PaymentSettings:
+      description: Private settings envelope; update receipt contains module UUID/version, GET contains recipient/configuration.
+      content: {application/json: {schema: {type: object, required: [settings], properties: {settings: {type: object}}}}}
+  schemas:
+    SourceSnapshot:
+      type: object
+      additionalProperties: {type: [string, 'null'], pattern: '^[a-f0-9]{64}$'}
+    QuoteRequest:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items: {$ref: '#/components/schemas/CreateOrder/properties/items'}
+    Quote:
+      type: object
+      required: [quote_uuid, catalog_version, items, total_satang, currency, expires_at]
+      properties:
+        quote_uuid: {type: string, format: uuid}
+        catalog_version: {type: string}
+        items: {type: array, minItems: 1, maxItems: 25, items: {type: object, description: 'product_uuid, sku, title, unit_price_satang, quantity, line_total_satang, product_version'}}
+        total_satang: {type: integer, minimum: 100, maximum: 100000000}
+        currency: {const: THB}
+        expires_at: {type: string, format: date-time}
+    OrderStatus: {type: string, enum: [awaiting_payment, pending_review, paid, rejected, cancelled]}
+    PublicProduct:
+      type: object
+      required: [uuid, sku, title, description, price_satang]
+      properties:
+        uuid: {type: string, format: uuid}
+        sku: {type: string}
+        title: {type: string}
+        description: {type: string}
+        price_satang: {type: integer, minimum: 100, maximum: 100000000}
+    CreateOrder:
+      type: object
+      additionalProperties: false
+      required: [idempotency_key, quote_uuid, customer_name, customer_email, items]
+      properties:
+        idempotency_key: {type: string, format: uuid}
+        quote_uuid: {type: string, format: uuid}
+        customer_name: {type: string, minLength: 1, maxLength: 120}
+        customer_email: {type: string, format: email, maxLength: 160}
+        customer_phone: {type: string, maxLength: 40}
+        note: {type: string, maxLength: 1000}
+        items:
+          type: array
+          minItems: 1
+          maxItems: 25
+          description: Product UUIDs must be distinct and active.
+          items:
+            type: object
+            additionalProperties: false
+            required: [product_uuid, quantity]
+            properties:
+              product_uuid: {type: string, format: uuid}
+              quantity: {type: integer, minimum: 1, maximum: 99}
+    GuestOrder:
+      type: object
+      required: [uuid, reference, customer_name, items, total_satang, currency, status, promptpay, latest_slip, created_at, updated_at]
+      properties:
+        uuid: {type: string, format: uuid}
+        reference: {type: string}
+        customer_name: {type: string}
+        items: {type: array, items: {type: object, description: 'product_uuid, sku, title, unit_price_satang, quantity, line_total_satang snapshots'}}
+        total_satang: {type: integer, minimum: 100, maximum: 100000000}
+        currency: {const: THB}
+        status: {$ref: '#/components/schemas/OrderStatus'}
+        promptpay: {type: object, description: 'Saved payee_label, masked_recipient, instructions, qr_payload, qr_svg. Never recomputed from current catalog/settings on replay.'}
+        latest_slip: {type: [object, 'null'], description: 'Private metadata/review reason for this authorized guest; no image data.'}
+        created_at: {type: string}
+        updated_at: {type: string}
+    SlipSubmission:
+      type: object
+      additionalProperties: false
+      required: [idempotency_key, payer_name, amount_satang, slip_data_url]
+      properties:
+        idempotency_key: {type: string, format: uuid}
+        payer_name: {type: string, minLength: 1, maxLength: 120}
+        payer_phone: {type: string, maxLength: 40}
+        amount_satang: {type: integer, minimum: 100, maximum: 100000000}
+        transfer_ref: {type: string, maxLength: 120}
+        claimed_transferred_at: {type: string, maxLength: 64, description: 'Unverified caller claim; not server upload or bank verified time.'}
+        slip_data_url: {type: string, maxLength: 7100000, pattern: '^data:image/(png|jpeg|webp);base64,'}
+    ProductFields:
+      type: object
+      properties:
+        sku: {type: string, minLength: 1, maxLength: 64, pattern: '^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$'}
+        title: {type: string, minLength: 1, maxLength: 160}
+        description: {type: string, maxLength: 2000}
+        price_satang: {type: integer, minimum: 100, maximum: 100000000}
+        active: {type: boolean}
+    CreateProduct:
+      allOf: [{$ref: '#/components/schemas/ProductFields'}]
+      type: object
+      unevaluatedProperties: false
+      required: [idempotency_key, sku, title, price_satang]
+      properties: {idempotency_key: {type: string, format: uuid}}
+    UpdateProduct:
+      allOf: [{$ref: '#/components/schemas/ProductFields'}]
+      type: object
+      unevaluatedProperties: false
+      required: [expected_version, sku, title, price_satang, active]
+      properties: {expected_version: {type: integer, minimum: 1}}
+    UpdatePaymentSettings:
+      type: object
+      additionalProperties: false
+      required: [expected_version, recipient_type, recipient, payee_label, enabled]
+      properties:
+        expected_version: {type: integer, minimum: 1}
+        recipient_type: {type: string, enum: [phone, national_id, ewallet]}
+        recipient: {type: string, maxLength: 30}
+        payee_label: {type: string, minLength: 1, maxLength: 160}
+        instructions: {type: string, maxLength: 1000}
+        enabled: {type: boolean}
+    Review:
+      type: object
+      additionalProperties: false
+      required: [expected_version, decision]
+      allOf:
+        - if: {properties: {decision: {const: accepted}}}
+          then: {required: [bank_verified], properties: {bank_verified: {const: true}}}
+        - if: {properties: {decision: {const: rejected}}}
+          then: {required: [reason], properties: {reason: {minLength: 1, pattern: '\S'}}}
+      properties:
+        expected_version: {type: integer, minimum: 1}
+        decision: {type: string, enum: [accepted, rejected]}
+        reason: {type: string, maxLength: 500, description: Nonblank required for rejection.}
+        bank_verified: {type: boolean, description: Must be true for acceptance; requires independent merchant bank check.}

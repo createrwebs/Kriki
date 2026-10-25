@@ -4,12 +4,11 @@
     $guestEntry = $landing->guestEntryHref();
 @endphp
 
-<header class="sticky top-0 z-50 bg-krikkit-canvas/90 backdrop-blur-xl">
-    <div class="mx-auto max-w-7xl border-x border-krikkit-line">
+<header class="sticky top-0 z-50 bg-krikkit-canvas">
+    <div class="mx-auto max-w-7xl">
         <nav class="flex items-center justify-between border-b border-krikkit-line px-4 py-4 sm:px-6 lg:px-10 lg:py-5">
             <a href="{{ route('home') }}" class="flex items-center text-krikkit-fg transition hover:opacity-80">
                 <x-site.mark />
-                <span class="sales-wordmark" aria-hidden="true">{{ $site->name() }}</span>
             </a>
 
             <div class="hidden items-center gap-1 lg:flex">
@@ -48,7 +47,7 @@
         style="max-height: calc(100dvh - 90px)"
         x-transition.opacity.duration.150ms
     >
-        <div class="mx-auto max-w-7xl border-x border-krikkit-line px-6 py-6">
+        <div class="mx-auto max-w-7xl px-6 py-6">
             <nav class="flex flex-col">
                 @foreach ($links as $link)
                     <a href="{{ $link['href'] }}" x-on:click="menu = false" class="block py-3 text-base font-medium text-krikkit-fg-soft hover:text-krikkit-fg">{{ $link['label'] }}</a>

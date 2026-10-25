@@ -1,0 +1,9 @@
+$kind: collection
+description: Current Laravel interface, locally verified on 2026-10-25. Business writes remain gated off in production. Orders and manual payments require reviewed schema v2. Quotes, owner revocation, private Storage receipts and five-minute image viewing are implemented locally; live Supabase acceptance remains pending. Every public request requires an exact authorized publication Origin and omits platform cookies. Owner requests require the configured Laravel session and CSRF token for mutations. All responses are no-store. Prices are integer THB satang. Owner module keys must match the operation (catalog/orders/manual_payments).
+variables:
+  baseUrl: http://localhost:8896
+  publicationOrigin: http://fictional.localhost:8896
+  orderToken: ""
+  ownerCookieName: fictional_module_qa
+  ownerSession: ""
+  csrfToken: ""

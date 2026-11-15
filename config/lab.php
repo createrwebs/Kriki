@@ -44,6 +44,8 @@ return [
         'reserved' => [],
     ],
 
+    'publish_domain' => env('LAB_PUBLISH_DOMAIN', ''),
+
     /*
     |--------------------------------------------------------------------------
     | Build gate auto-switch

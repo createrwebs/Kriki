@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { LAB_BTN_PRIMARY } from '../lib/labConstants'
+import { failDeskPulse } from '../lib/deskPulse'
 import { LabGlyph } from './Icons'
 import { ManualWorkspaceButton } from './ManualWorkspaceButton'
 import { WorkspaceTabs } from './WorkspaceTabs'
@@ -46,6 +48,8 @@ export function LabHeader({
     openConsoleSignal,
     openPreviewSignal,
     openTablesSignal = null,
+    openModulesSignal = null,
+    onOpenModules = null,
     onPanelChange,
     onRequestCloseTab,
     onWorkspaceCommand = null,
@@ -53,6 +57,38 @@ export function LabHeader({
     publishStatus = 'idle',
     onHosting = null,
 }) {
+    const [confirmDelete, setConfirmDelete] = useState(false)
+    const [deletingProject, setDeletingProject] = useState(false)
+
+    const handleDeleteProject = async () => {
+        if (! projectUuid || deletingProject) return
+        setDeletingProject(true)
+        try {
+            const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+            const res = await fetch(`/lab/builder/projects/${encodeURIComponent(projectUuid)}`, {
+                method: 'DELETE',
+                credentials: 'same-origin',
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    ...(token ? { 'X-CSRF-TOKEN': token } : {}),
+                },
+            })
+            if (res.ok) {
+                window.location.assign('/lab')
+            } else {
+                const data = await res.json().catch(() => ({}))
+                failDeskPulse(data?.message || 'ลบโปรเจกต์ไม่สำเร็จ')
+                setConfirmDelete(false)
+            }
+        } catch (err) {
+            failDeskPulse(err?.message || 'ลบโปรเจกต์ไม่สำเร็จ')
+            setConfirmDelete(false)
+        } finally {
+            setDeletingProject(false)
+        }
+    }
+
     return (
         <header className="lab-app-header flex h-14 shrink-0 items-stretch overflow-hidden border-b border-krikkit-line bg-krikkit-canvas">
             {/* Same flex basis as chat rail → invisible edge stays aligned on morph/resize */}
@@ -97,38 +133,35 @@ export function LabHeader({
                 )}
                 <div className="ml-auto flex h-5 shrink-0 items-center gap-2.5 pl-3">
                     {projectUuid ? (
-                        <button
-                            type="button"
-                            onClick={async () => {
-                                if (! window.confirm(`ต้องการลบโปรเจกต์ "${crumbTitle || projectUuid}" ออกจากระบบใช่หรือไม่? (คืนโควต้าโปรเจกต์ทันที)`)) {
-                                    return
-                                }
-                                try {
-                                    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
-                                    const res = await fetch(`/lab/builder/projects/${encodeURIComponent(projectUuid)}`, {
-                                        method: 'DELETE',
-                                        credentials: 'same-origin',
-                                        headers: {
-                                            Accept: 'application/json',
-                                            'X-Requested-With': 'XMLHttpRequest',
-                                            ...(token ? { 'X-CSRF-TOKEN': token } : {}),
-                                        },
-                                    })
-                                    if (res.ok) {
-                                        window.location.assign('/lab')
-                                    } else {
-                                        const data = await res.json().catch(() => ({}))
-                                        window.alert(data?.message || 'ลบโปรเจกต์ไม่สำเร็จ')
-                                    }
-                                } catch (err) {
-                                    window.alert(err?.message || 'ลบโปรเจกต์ไม่สำเร็จ')
-                                }
-                            }}
-                            className="inline-flex h-6 items-center gap-1 rounded-md border border-red-300 bg-red-50 px-2 text-[11px] font-medium text-red-700 transition hover:bg-red-100"
-                            title="ลบโปรเจกต์นี้"
-                        >
-                            🗑 ลบโปรเจกต์
-                        </button>
+                        confirmDelete ? (
+                            <span className="inline-flex items-center gap-1">
+                                <button
+                                    type="button"
+                                    disabled={deletingProject}
+                                    onClick={handleDeleteProject}
+                                    className="inline-flex h-6 items-center gap-1 rounded-md border border-red-600 bg-red-600 px-2 text-[11px] font-medium text-white transition hover:bg-red-700 disabled:opacity-50"
+                                >
+                                    {deletingProject ? 'กำลังลบ…' : 'ยืนยันลบ?'}
+                                </button>
+                                <button
+                                    type="button"
+                                    disabled={deletingProject}
+                                    onClick={() => setConfirmDelete(false)}
+                                    className="inline-flex h-6 items-center rounded-md border border-krikkit-line bg-krikkit-surface px-2 text-[11px] font-medium text-krikkit-muted transition hover:text-krikkit-fg"
+                                >
+                                    ยกเลิก
+                                </button>
+                            </span>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={() => setConfirmDelete(true)}
+                                className="inline-flex h-6 items-center gap-1 rounded-md border border-red-300 bg-red-50 px-2 text-[11px] font-medium text-red-700 transition hover:bg-red-100"
+                                title="ลบโปรเจกต์นี้"
+                            >
+                                🗑 ลบโปรเจกต์
+                            </button>
+                        )
                     ) : null}
                     <CreditBalanceBadge inProject={Boolean(projectUuid)} />
                     <ManualWorkspaceButton
@@ -147,6 +180,7 @@ export function LabHeader({
                         openConsoleSignal={openConsoleSignal}
                         openPreviewSignal={openPreviewSignal}
                         openTablesSignal={openTablesSignal}
+                        openModulesSignal={openModulesSignal}
                         dirtyPaths={dirtyPaths}
                         onRequestCloseTab={onRequestCloseTab}
                         onWorkspaceCommand={onWorkspaceCommand}
@@ -162,7 +196,13 @@ export function LabHeader({
                             </a>
                             <button
                                 type="button"
-                                onClick={() => onPanelChange?.({ panel: 'modules', tabId: null })}
+                                onClick={() => {
+                                    if (onOpenModules) {
+                                        onOpenModules()
+                                    } else {
+                                        onPanelChange?.({ panel: 'modules', tabId: null })
+                                    }
+                                }}
                                 className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-teal-300 bg-teal-50 px-2.5 text-xs font-medium text-teal-800 transition hover:bg-teal-100"
                                 title="เปิดระบบหลังบ้านสำหรับจัดการสินค้า ข่าวสาร ตรวจสอบสลิป และตั้งค่า PromptPay"
                             >

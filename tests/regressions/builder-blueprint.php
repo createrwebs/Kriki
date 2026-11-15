@@ -60,6 +60,23 @@ foreach ($data['templates'] as $template) {
     }
 }
 
+$integrationPlans = [];
+foreach ($data['templates'] as $template) {
+    $plan = $catalog->integrationPlan($template['id']);
+    formCheck($plan['version'] === 1 && $plan['template_id'] === $template['id'] && is_array($plan['modules']), 'Template exposes a bounded integration plan');
+    foreach ($plan['modules'] as $binding) {
+        formCheck(in_array($binding['module'], ['contact', 'news', 'catalog', 'orders', 'manual_payments'], true)
+            && preg_match('#^/[a-z0-9\-/]*$#', $binding['route']) === 1, 'Integration plan uses managed module keys and safe routes');
+    }
+    $integrationPlans[$template['id']] = $plan;
+}
+formCheck($integrationPlans['storefront-demo']['modules'][0]['route'] === '/products', 'Storefront template points runtime setup at its product route');
+$widgetSlots = 0;
+foreach ($data['templates'] as $template) foreach ($template['pages'] as $page) foreach ($page['sections'] as $section) {
+    if (preg_match('/\[widget:(?:form|news|cart)\]/i', $section['heading'])) $widgetSlots++;
+}
+formCheck($widgetSlots >= 4, 'Templates expose form, news and cart preview slots');
+
 $base = $catalog->blueprint('business', 'business-studio', 'เว็บไซต์ตัวอย่าง');
 function builderInvalid(array $blueprint, string $field, string $label): void
 {

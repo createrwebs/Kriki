@@ -72,6 +72,12 @@ function Section({
     onEdit,
     onUploadImage,
     onAiSection,
+    aiTargetSection,
+    aiPrompt,
+    onChangeAiPrompt,
+    onRunAiSection,
+    onCloseAiSection,
+    aiLoading,
 }) {
     const { type, variant, heading, body, items } = section
     const { cleanText, imageUrl, rawTag } = extractTrustedImageUrl(body)
@@ -80,6 +86,12 @@ function Section({
     const isNewsWidget = /\[widget:news\]|ข่าวสาร|บทความ|อัปเดต|โปรโมชั่น/i.test(`${heading} ${body}`) && items.length > 0
     const isCartWidget = /\[widget:cart\]|ตะกร้าสินค้า|รายการสินค้า|ชำระเงิน|promptpay/i.test(`${heading} ${body}`) && items.length > 0
     const editable = typeof onEdit === 'function'
+    const isAiTarget = Boolean(
+        editable &&
+        aiTargetSection &&
+        (aiTargetSection.sectionId === section.id || aiTargetSection.id === section.id) &&
+        (! aiTargetSection.pageId || aiTargetSection.pageId === pageId)
+    )
 
     const commitHeading = (nextText) => {
         if (! editable) return
@@ -207,6 +219,42 @@ function Section({
                             </button>
                         ) : null}
                     </div>
+                </div>
+            ) : null}
+
+            {isAiTarget && onRunAiSection ? (
+                <div className="bp-inline-ai-bar" contentEditable={false}>
+                    <strong>✨ AI แก้ส่วน "{cleanHeading || heading}":</strong>
+                    <input
+                        type="text"
+                        className="bp-inline-ai-input"
+                        value={aiPrompt || ''}
+                        onChange={(e) => onChangeAiPrompt?.(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                e.preventDefault()
+                                onRunAiSection(aiPrompt, section.id)
+                            }
+                        }}
+                        placeholder="พิมพ์คำสั่งให้ AI แก้ไขส่วนนี้ แล้วกดปุ่มรัน..."
+                    />
+                    <button
+                        type="button"
+                        className="bp-wysiwyg-btn bp-wysiwyg-ai"
+                        disabled={aiLoading}
+                        onClick={() => onRunAiSection(aiPrompt, section.id)}
+                    >
+                        {aiLoading ? '✨ กำลังแก้…' : '✨ สั่ง AI รันทันที'}
+                    </button>
+                    {onCloseAiSection ? (
+                        <button
+                            type="button"
+                            className="bp-wysiwyg-btn"
+                            onClick={onCloseAiSection}
+                        >
+                            ✕ ปิด
+                        </button>
+                    ) : null}
                 </div>
             ) : null}
 
@@ -376,6 +424,12 @@ export function SitePage({
     onEdit = null,
     onUploadImage = null,
     onAiSection = null,
+    aiTargetSection = null,
+    aiPrompt = '',
+    onChangeAiPrompt = null,
+    onRunAiSection = null,
+    onCloseAiSection = null,
+    aiLoading = false,
 }) {
     const palette = catalog.palettes[blueprint.theme.palette]
     const editable = typeof onEdit === 'function'
@@ -433,6 +487,12 @@ export function SitePage({
                         onEdit={onEdit}
                         onUploadImage={onUploadImage}
                         onAiSection={onAiSection}
+                        aiTargetSection={aiTargetSection}
+                        aiPrompt={aiPrompt}
+                        onChangeAiPrompt={onChangeAiPrompt}
+                        onRunAiSection={onRunAiSection}
+                        onCloseAiSection={onCloseAiSection}
+                        aiLoading={aiLoading}
                     />
                 ))}
             </main>

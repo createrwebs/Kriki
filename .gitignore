@@ -38,3 +38,7 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+crewai_project/.venv
+crewai_project/.env
+crewai_project/

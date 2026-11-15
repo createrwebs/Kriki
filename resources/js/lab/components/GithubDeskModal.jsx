@@ -85,6 +85,7 @@ export function GithubDeskModal({
     const [repoName, setRepoName] = useState('')
     const [commitMessage, setCommitMessage] = useState('Update from Krikkit Lab')
     const [force, setForce] = useState(false)
+    const [error, setError] = useState('')
 
     const close = (cancelled = true) => {
         if (busy) return
@@ -94,6 +95,7 @@ export function GithubDeskModal({
 
     const load = async () => {
         if (! projectUuid) return
+        setError('')
         try {
             const payload = await readLabGithubStatus(projectUuid)
             setStatus(payload)
@@ -105,22 +107,28 @@ export function GithubDeskModal({
                 onClose?.()
             }
         } catch (err) {
-            failDeskPulse(err.message || t.githubUnavailable)
+            const msg = err.message || t.githubUnavailable
+            setError(msg)
+            failDeskPulse(msg)
         }
     }
 
     useEffect(() => {
         if (! open) return
+        setError('')
         load()
     }, [open, projectUuid])
 
     const run = async (task) => {
         setBusy(true)
+        setError('')
         try {
             await task()
             await load()
         } catch (err) {
-            failDeskPulse(err.message || t.githubUnavailable)
+            const msg = err.message || t.githubUnavailable
+            setError(msg)
+            failDeskPulse(msg)
         } finally {
             setBusy(false)
         }
@@ -162,6 +170,11 @@ export function GithubDeskModal({
                 </div>
 
                 <div className="krikkit-scroll-hover min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
+                    {error ? (
+                        <p role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 px-3.5 py-2.5 text-xs font-medium text-red-600 dark:text-red-300">
+                            {error}
+                        </p>
+                    ) : null}
                     {waitMode ? (
                         <p className="text-sm text-krikkit-muted">
                             {needRemote

@@ -9,6 +9,12 @@ export function BlueprintPreview({
     onEdit = null,
     onUploadImage = null,
     onAiSection = null,
+    aiTargetSection = null,
+    aiPrompt = '',
+    onChangeAiPrompt = null,
+    onRunAiSection = null,
+    onCloseAiSection = null,
+    aiLoading = false,
 }) {
     const pages = overview ? blueprint.pages : blueprint.pages.filter(p => p.id === pageId)
     return (
@@ -28,6 +34,12 @@ export function BlueprintPreview({
                         onEdit={onEdit}
                         onUploadImage={onUploadImage}
                         onAiSection={onAiSection}
+                        aiTargetSection={aiTargetSection}
+                        aiPrompt={aiPrompt}
+                        onChangeAiPrompt={onChangeAiPrompt}
+                        onRunAiSection={onRunAiSection}
+                        onCloseAiSection={onCloseAiSection}
+                        aiLoading={aiLoading}
                     />
                 </article>
             ))}

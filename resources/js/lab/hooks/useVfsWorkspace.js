@@ -107,6 +107,11 @@ export function useVfsWorkspace({ projectUuid, projectTitle, building }) {
     const [openConsoleSignal, setOpenConsoleSignal] = useState(null)
     const [openPreviewSignal, setOpenPreviewSignal] = useState(null)
     const [openTablesSignal, setOpenTablesSignal] = useState(null)
+    const [openModulesSignal, setOpenModulesSignal] = useState(() => (
+        typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('panel') === 'modules'
+            ? { nonce: Date.now() }
+            : null
+    ))
     const [recentPaths, setRecentPaths] = useState(() => readRecentPaths(projectUuid))
     /** Shell-tool runs mirrored into the Console tab (command + stdout). */
     const [consoleSessionLog, setConsoleSessionLog] = useState([])
@@ -775,6 +780,11 @@ export function useVfsWorkspace({ projectUuid, projectTitle, building }) {
         setComposeMode('rail')
     }, [])
 
+    const openModulesFromChat = useCallback(() => {
+        setOpenModulesSignal({ nonce: Date.now() })
+        setComposeMode('rail')
+    }, [])
+
     const appendConsoleSession = useCallback((entry) => {
         if (! entry) return
         const lines = Array.isArray(entry.lines)
@@ -834,6 +844,7 @@ export function useVfsWorkspace({ projectUuid, projectTitle, building }) {
         openConsoleSignal,
         openPreviewSignal,
         openTablesSignal,
+        openModulesSignal,
         recentPaths,
         consoleSessionLog,
         dirtyPaths,
@@ -865,6 +876,7 @@ export function useVfsWorkspace({ projectUuid, projectTitle, building }) {
         openConsoleFromChat,
         openPreviewFromChat,
         openTablesFromChat,
+        openModulesFromChat,
         appendConsoleSession,
         setComposeMode,
     }

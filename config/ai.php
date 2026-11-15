@@ -16,7 +16,7 @@ use App\Ai\Drivers\OpenAiResponsesDriver;
 
 return [
 
-    'default_model' => env('AI_DEFAULT_MODEL', 'claude-sonnet-4-5'),
+    'default_model' => env('AI_DEFAULT_MODEL', 'claude-sonnet-5'),
 
     /*
     | Lab credits: token-weighted spend mapped to integer credits.

@@ -26,6 +26,98 @@ use Throwable;
 
 final class WebsiteBuilderAiController extends Controller
 {
+    public function plan(
+        Request $request,
+        BlueprintSchema $schema,
+        TemplateCatalog $catalogService,
+        ModelCatalog $models,
+        ProviderFactory $providers,
+        AiSettingsRepository $settings,
+        EntitlementGate $entitlements,
+        LabCreditMeter $credits,
+    ): JsonResponse {
+        abort_unless($request->user() instanceof User, 401);
+        $request->validate([
+            'prompt' => ['required', 'string', 'max:2000'],
+            'kind' => ['required', 'string'],
+            'template_id' => ['nullable', 'string'],
+            'title' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        $catalog = $catalogService->all();
+        $kind = (string) $request->input('kind');
+        $kindDefinition = collect($catalog['kinds'])->firstWhere('id', $kind);
+        if (! is_array($kindDefinition)) {
+            throw ValidationException::withMessages(['kind' => 'Choose a supported website kind.']);
+        }
+        $templateId = (string) ($request->input('template_id') ?: ($kindDefinition['template_ids'][0] ?? ''));
+        $title = trim((string) $request->input('title', ''));
+        $title = $title !== '' ? $title : 'เว็บไซต์จากแผน AI';
+        $prompt = trim((string) $request->input('prompt'));
+        $base = $catalogService->blueprint($kind, $templateId, $title, $prompt);
+        $candidate = null;
+        $usedLlm = false;
+
+        try {
+            $llmResult = $this->callLlm(
+                $prompt,
+                'all',
+                null,
+                null,
+                $base,
+                $catalog,
+                $models,
+                $providers,
+                $settings,
+                $entitlements,
+                $credits,
+                $request->user(),
+            );
+            if (is_array($llmResult)) {
+                $candidate = $this->sanitizeBlueprint($llmResult, $base, $catalog);
+                $candidate = $schema->validate($candidate);
+                $usedLlm = true;
+            }
+        } catch (EntitlementDeniedException|QueryException $error) {
+            throw $error;
+        } catch (Throwable) {
+            $candidate = null;
+        }
+
+        if ($candidate === null) {
+            $candidate = $this->applySmartPromptEdits($base, $prompt, 'all', null, null, $catalog);
+            $candidate = $this->sanitizeBlueprint($candidate, $base, $catalog);
+            $candidate = $schema->validate($candidate);
+        }
+
+        $widgets = [];
+        foreach ($candidate['pages'] as $page) {
+            foreach ($page['sections'] as $section) {
+                $text = ($section['heading'] ?? '').' '.($section['body'] ?? '');
+                foreach (['form' => '[widget:form]', 'news' => '[widget:news]', 'cart' => '[widget:cart]'] as $widget => $marker) {
+                    if (str_contains($text, $marker)) $widgets[$widget] = true;
+                }
+            }
+        }
+
+        return response()->json([
+            'blueprint' => $candidate,
+            'source' => $usedLlm ? 'ai' : 'smart-assistant',
+            'plan' => [
+                'summary' => 'ตรวจแผนและแก้โครงสร้างได้ก่อนบันทึก แบบร่างยังไม่สร้างโปรเจกต์หรือแก้ฐานข้อมูลธุรกิจ',
+                'pages' => array_map(fn (array $page) => [
+                    'title' => $page['title'],
+                    'route' => $page['route'],
+                    'sections' => count($page['sections']),
+                ], $candidate['pages']),
+                'widgets' => array_keys($widgets),
+            ],
+            'message' => $usedLlm
+                ? 'AI สร้างแผนเว็บไซต์แล้ว ตรวจโครงสร้างและแก้ไขต่อก่อนบันทึกได้เลย'
+                : 'ตัวช่วยในเครื่องสร้างแผนเว็บไซต์จาก Brief แล้ว ตรวจโครงสร้างและแก้ไขต่อก่อนบันทึกได้เลย',
+        ])->header('Cache-Control', 'private, no-store');
+    }
+
     public function edit(
         Request $request,
         BlueprintSchema $schema,
@@ -511,41 +603,82 @@ SYS;
 
         // 6. Check if user wants Products / Cart / Pricing Widget
         $wantsCart = (bool) preg_match('/(สินค้า|ตะกร้า|ราคา|แพ็กเกจ|สั่งซื้อ|ชำระเงิน|promptpay|เมนู|คอร์ส|บริการเด่น)/iu', $prompt);
+        $parsedItems = $this->extractPromptListItems($prompt);
+        $brandLabel = trim((string) ($next['shared']['brand'] ?? $next['title'] ?? 'แบรนด์ของเรา'));
+
         if ($wantsCart) {
             $hasCartOnTarget = false;
-            foreach ($next['pages'][$targetPageIdx]['sections'] as $sec) {
+            foreach ($next['pages'][$targetPageIdx]['sections'] as &$sec) {
                 if (str_contains(($sec['heading'] ?? '').' '.($sec['body'] ?? ''), '[widget:cart]')) {
                     $hasCartOnTarget = true;
+                    if (! $lightTouch && count($parsedItems) > 0) {
+                        $sec['items'] = $parsedItems;
+                    }
                     break;
                 }
             }
+            unset($sec);
             if (! $hasCartOnTarget && count($next['pages'][$targetPageIdx]['sections']) < 12) {
                 $next['pages'][$targetPageIdx]['sections'][] = [
                     'id' => (string) Str::uuid(),
                     'type' => 'cards',
                     'variant' => 'default',
-                    'heading' => 'รายการสินค้าและแพ็กเกจยอดนิยม [widget:cart]',
-                    'body' => 'เลือกสินค้าหรือแพ็กเกจที่ต้องการลงตะกร้า พร้อมรองรับการชำระเงินผ่าน QR PromptPay',
-                    'items' => [
-                        ['id' => (string) Str::uuid(), 'title' => 'แพ็กเกจเริ่มต้น (Starter Package) — ฿990', 'body' => 'เหมาะสำหรับผู้เริ่มต้น ครบจบในเซ็ตเดียวพร้อมรับประกันคุณภาพ'],
-                        ['id' => (string) Str::uuid(), 'title' => 'แพ็กเกจขายดี (Best Seller) — ฿1,890', 'body' => 'คุ้มค่าที่สุด พร้อมบริการดูแลพิเศษและจัดส่งฟรีทั่วประเทศ'],
-                        ['id' => (string) Str::uuid(), 'title' => 'แพ็กเกจพรีเมียม (VIP Exclusive) — ฿2,990', 'body' => 'บริการระดับพรีเมียมแบบครบวงจร พร้อมทีมผู้เชี่ยวชาญดูแลส่วนตัว'],
-                    ],
+                    'heading' => 'รายการสินค้าและบริการแนะนำของ '.$brandLabel.' [widget:cart]',
+                    'body' => 'เลือกสินค้าหรือบริการจาก '.$brandLabel.' ลงตะกร้า พร้อมรองรับการชำระเงินผ่าน QR PromptPay',
+                    'items' => count($parsedItems) > 0
+                        ? $parsedItems
+                        : $this->buildContextualOfferings($prompt, $brandLabel),
                 ];
             }
+        }
+
+        // Also update any existing [widget:cart] or /products page sections when scope === 'all' so template placeholders are replaced
+        if (! $lightTouch && $scope === 'all') {
+            foreach ($next['pages'] as $pIdx => &$pageRef) {
+                if (($pageRef['route'] ?? '') === '/products' && in_array($pageRef['title'] ?? '', ['สินค้าตัวอย่าง', 'Products'], true)) {
+                    $pageRef['title'] = 'สินค้าและบริการ';
+                } elseif (($pageRef['route'] ?? '') === '/product-detail' && ($pageRef['title'] ?? '') === 'รายละเอียดตัวอย่าง') {
+                    $pageRef['title'] = 'รายละเอียดสินค้า';
+                } elseif (($pageRef['route'] ?? '') === '/cart' && ($pageRef['title'] ?? '') === 'ตะกร้าตัวอย่าง') {
+                    $pageRef['title'] = 'ตะกร้าสินค้า';
+                } elseif (($pageRef['route'] ?? '') === '/checkout' && ($pageRef['title'] ?? '') === 'ชำระเงินตัวอย่าง') {
+                    $pageRef['title'] = 'แจ้งชำระเงิน';
+                }
+                foreach ($pageRef['sections'] as &$secRef) {
+                    if (str_contains(($secRef['heading'] ?? '').' '.($secRef['body'] ?? ''), '[widget:cart]')) {
+                        if (str_contains($secRef['heading'] ?? '', 'ร้านสมมติ')) {
+                            $secRef['heading'] = 'สินค้าและบริการยอดนิยมของ '.$brandLabel.' [widget:cart]';
+                            $secRef['body'] = 'คัดสรรสินค้าและบริการคุณภาพจาก '.$brandLabel.' พร้อมสั่งซื้อและชำระเงินผ่าน PromptPay';
+                        }
+                        if (count($parsedItems) > 0) {
+                            $secRef['items'] = $parsedItems;
+                        } elseif (isset($secRef['items'][0]['title']) && in_array($secRef['items'][0]['title'], ['สมุดสีใบไม้', 'ถุงผ้าวันสบาย'], true)) {
+                            $secRef['items'] = $this->buildContextualOfferings($prompt, $brandLabel);
+                        }
+                    }
+                }
+                unset($secRef);
+            }
+            unset($pageRef);
         }
 
         // 7. If LLM wasn't used ($lightTouch === false), also update the target section/page copy so the user immediately sees their prompt reflected in the headings/body!
         if (! $lightTouch) {
             $cleanSummaryPrompt = trim(preg_replace('/\s+/u', ' ', $prompt) ?? $prompt);
-            $next['summary'] = mb_substr($cleanSummaryPrompt, 0, 2000);
+            if ($scope === 'all') {
+                $next['summary'] = mb_substr($cleanSummaryPrompt, 0, 2000);
+                $next['shared']['footer'] = mb_substr($brandLabel.' · บริการคุณภาพพร้อมดูแลและให้คำปรึกษาครบวงจร', 0, 240);
+            }
 
             if ($scope === 'section' && $sectionId !== null) {
                 foreach ($next['pages'][$targetPageIdx]['sections'] as &$sec) {
                     if (($sec['id'] ?? '') === $sectionId) {
                         $imageTag = $this->extractImageTag($sec['body'] ?? '');
-                        $sec['heading'] = mb_substr($this->deriveHeadingFromPrompt($prompt, $sec['heading'] ?? $next['shared']['brand']), 0, 120);
+                        $sec['heading'] = mb_substr($this->deriveHeadingFromPrompt($prompt, $sec['heading'] ?? $brandLabel, $brandLabel), 0, 120);
                         $sec['body'] = mb_substr(trim($cleanSummaryPrompt.($imageTag ? "\n".$imageTag : '')), 0, 2000);
+                        if (count($parsedItems) > 0 && ! str_contains(($sec['heading'] ?? ''), '[widget:form]')) {
+                            $sec['items'] = $parsedItems;
+                        }
                         break;
                     }
                 }
@@ -555,20 +688,133 @@ SYS;
                 if (! empty($next['pages'][$targetPageIdx]['sections'][0])) {
                     $hero = &$next['pages'][$targetPageIdx]['sections'][0];
                     $imageTag = $this->extractImageTag($hero['body'] ?? '');
-                    if (! $wantsForm && ! $wantsNews && ! $wantsCart) {
-                        $hero['heading'] = mb_substr($this->deriveHeadingFromPrompt($prompt, $hero['heading']), 0, 120);
+                    $isPureWidgetCommand = ($wantsForm || $wantsNews || $wantsCart)
+                        && preg_match('/^(?:เพิ่ม|ใส่|สร้าง)\s*(?:แบบฟอร์ม|ฟอร์ม|ข่าวสาร|บทความ|รายการสินค้า|ตะกร้า)/u', trim($prompt));
+                    if (! $isPureWidgetCommand) {
+                        $hero['heading'] = mb_substr($this->deriveHeadingFromPrompt($prompt, $hero['heading'], $brandLabel), 0, 120);
                     }
                     $newBody = $cleanSummaryPrompt;
                     if ($imageTag !== '' && ! str_contains($newBody, $imageTag)) {
                         $newBody .= "\n".$imageTag;
                     }
                     $hero['body'] = mb_substr(trim($newBody), 0, 2000);
+                    if (count($parsedItems) > 0 && ! $wantsForm && ! $wantsNews && ! $wantsCart) {
+                        $hero['items'] = $parsedItems;
+                    }
                     unset($hero);
+                }
+
+                // Also tailor the second section (feature-grid) on the target page if it still has template placeholder copy
+                if (! empty($next['pages'][$targetPageIdx]['sections'][1])) {
+                    $feat = &$next['pages'][$targetPageIdx]['sections'][1];
+                    if (in_array($feat['heading'] ?? '', ['ลองจัดคอลเลกชันของคุณ', 'เริ่มจากสิ่งที่สำคัญกับคุณ', 'แบบฝึกหัดที่เลือกมา', 'หน้าที่อยากชวนเปิด'], true)) {
+                        $feat['heading'] = mb_substr('จุดเด่นและบริการหลักของ '.$brandLabel, 0, 120);
+                        $feat['body'] = mb_substr('ยกระดับประสบการณ์ด้วยบริการและผลิตภัณฑ์ที่คัดสรรมาอย่างพิถีพิถันเพื่อลูกค้าของ '.$brandLabel, 0, 2000);
+                        $feat['items'] = count($parsedItems) > 0
+                            ? $parsedItems
+                            : $this->buildContextualHighlights($prompt, $brandLabel);
+                    }
+                    unset($feat);
                 }
             }
         }
 
         return $next;
+    }
+
+    private function buildContextualHighlights(string $prompt, string $brand): array
+    {
+        $clauses = $this->extractPromptHighlightsFromProse($prompt, $brand);
+        if (count($clauses) >= 2) {
+            return $clauses;
+        }
+
+        return [
+            ['id' => (string) Str::uuid(), 'title' => 'คัดสรรคุณภาพระดับพรีเมียม', 'body' => $brand.' ใส่ใจทุกรายละเอียดตั้งแต่การคัดเลือกวัตถุดิบและมาตรฐานการให้บริการ'],
+            ['id' => (string) Str::uuid(), 'title' => 'สั่งซื้อและติดต่อสะดวกรวดเร็ว', 'body' => 'รองรับการสั่งซื้อ จองคิว และชำระเงินออนไลน์ผ่านหน้าเว็บไซต์ได้ทันที'],
+            ['id' => (string) Str::uuid(), 'title' => 'ทีมงานมืออาชีพพร้อมดูแล', 'body' => 'ให้คำปรึกษาและดูแลลูกค้าทุกท่านอย่างใกล้ชิดในทุกขั้นตอน'],
+        ];
+    }
+
+    private function buildContextualOfferings(string $prompt, string $brand): array
+    {
+        $lower = mb_strtolower($prompt, 'UTF-8');
+        if (preg_match('/(มัทฉะ|ชาเขียว|matcha|เบเกอรี่|ครัวซองต์|กาแฟ|คาเฟ่|เค้ก|ขนม)/u', $lower)) {
+            return [
+                ['id' => (string) Str::uuid(), 'title' => 'Uji Ceremonial Matcha Latte — ฿145', 'body' => 'มัทฉะเกรดพิธีการนำเข้าจากญี่ปุ่น ชงสดแก้วต่อแก้ว หอมเข้มข้นกลมกล่อม'],
+                ['id' => (string) Str::uuid(), 'title' => 'French Butter Croissant อบสด — ฿95', 'body' => 'ครัวซองต์เนยสดแท้จากฝรั่งเศส อบสดใหม่ทุกเช้า กรอบนอกนุ่มใน'],
+                ['id' => (string) Str::uuid(), 'title' => 'Matcha & Bakery Gift Box Set — ฿490', 'body' => 'เซ็ตของขวัญมัทฉะพรีเมียมพร้อมเบเกอรี่โฮมเมดยอดนิยม จัดส่งถึงบ้าน'],
+            ];
+        }
+        if (preg_match('/(คลินิก|ทันตกรรม|ความงาม|สุขภาพ|แพทย์|นวด|สปา)/u', $lower)) {
+            return [
+                ['id' => (string) Str::uuid(), 'title' => 'โปรแกรมตรวจเช็กสุขภาพและปรึกษาแพทย์ — ฿990', 'body' => 'ประเมินและวางแผนการดูแลรายบุคคลโดยทีมผู้เชี่ยวชาญของ '.$brand],
+                ['id' => (string) Str::uuid(), 'title' => 'แพ็กเกจดูแลสุขภาพยอดนิยม (Best Seller) — ฿2,490', 'body' => 'โปรแกรมฟื้นฟูและดูแลครบวงจรด้วยเครื่องมือมาตรฐานสากล'],
+                ['id' => (string) Str::uuid(), 'title' => 'คอร์สดูแลพิเศษระดับพรีเมียม (VIP Course) — ฿5,900', 'body' => 'ดูแลต่อเนื่องแบบส่วนตัวพร้อมติดตามผลอย่างใกล้ชิด'],
+            ];
+        }
+
+        return [
+            ['id' => (string) Str::uuid(), 'title' => 'ชุดเริ่มต้นยอดนิยม (Starter Set) จาก '.$brand.' — ฿590', 'body' => 'เหมาะสำหรับลูกค้าใหม่ คัดสรรสินค้าและบริการเด่นครบจบในเซ็ตเดียว'],
+            ['id' => (string) Str::uuid(), 'title' => 'ชุดขายดีอันดับ 1 (Best Seller) จาก '.$brand.' — ฿1,290', 'body' => 'คุ้มค่าที่สุด พร้อมสิทธิพิเศษและบริการจัดส่งรวดเร็ว'],
+            ['id' => (string) Str::uuid(), 'title' => 'ชุดพรีเมียมครบวงจร (Premium Exclusive) — ฿2,490', 'body' => 'ตอบโจทย์ครบทุกความต้องการ พร้อมการดูแลพิเศษจากทีมงาน '.$brand],
+        ];
+    }
+
+    private function extractPromptHighlightsFromProse(string $prompt, string $brand): array
+    {
+        $clean = trim(preg_replace('/\s+/u', ' ', $prompt) ?? '');
+        $segments = preg_split('/(?:รองรับ|พร้อม|มีหน้า|และมี|รวมถึง|,|•)/u', $clean) ?: [];
+        $items = [];
+        foreach ($segments as $idx => $seg) {
+            if ($idx === 0) {
+                continue;
+            }
+            $seg = trim($seg, " \t\n\r\0\x0B-–—:.");
+            if (mb_strlen($seg, 'UTF-8') >= 6 && mb_strlen($seg, 'UTF-8') <= 90) {
+                $items[] = [
+                    'id' => (string) Str::uuid(),
+                    'title' => mb_substr($seg, 0, 70),
+                    'body' => 'บริการและฟีเจอร์เด่นจาก '.$brand.' ที่ออกแบบมาเพื่อความสะดวกของลูกค้า',
+                ];
+            }
+            if (count($items) >= 3) {
+                break;
+            }
+        }
+
+        return $items;
+    }
+
+    private function extractPromptListItems(string $prompt): array
+    {
+        $lines = preg_split('/\r\n|\r|\n/u', trim($prompt)) ?: [];
+        $items = [];
+        foreach ($lines as $idx => $line) {
+            if ($idx === 0 && count($lines) > 1) {
+                continue;
+            }
+            if (preg_match('/^(?:[-*•]|\d+[.)])\s*(.+)$/u', trim($line), $m)) {
+                $raw = trim($m[1]);
+                if ($raw === '') {
+                    continue;
+                }
+                $parts = preg_split('/\s*(?:[:：—–-]\s+)/u', $raw, 2) ?: [$raw];
+                $title = mb_substr(trim($parts[0]), 0, 80);
+                $body = isset($parts[1]) && trim($parts[1]) !== ''
+                    ? mb_substr(trim($parts[1]), 0, 240)
+                    : 'รายละเอียดและจุดเด่นของ '.$title;
+                if ($title !== '') {
+                    $items[] = [
+                        'id' => (string) Str::uuid(),
+                        'title' => $title,
+                        'body' => $body,
+                    ];
+                }
+            }
+        }
+
+        return array_slice($items, 0, 6);
     }
 
     private function buildRequestedFormFields(string $prompt, array $existingItems): array
@@ -604,13 +850,25 @@ SYS;
         return '';
     }
 
-    private function deriveHeadingFromPrompt(string $prompt, string $fallback): string
+    private function deriveHeadingFromPrompt(string $prompt, string $fallback, string $brand = ''): string
     {
-        $firstLine = trim( explode("\n", trim($prompt))[0] ?? '' );
-        $firstLine = preg_replace('/^(?:ช่วย|ให้\s*ai|สั่ง\s*ai|ปรับแก้|แก้ไข|เปลี่ยน|เพิ่ม)\s*/iu', '', $firstLine) ?? $firstLine;
+        $firstLine = trim(explode("\n", trim($prompt))[0] ?? '');
+        $firstLine = preg_replace('/^(?:ช่วย|ให้\s*ai|สั่ง\s*ai|ปรับแก้|แก้ไข|เปลี่ยนหัวข้อเป็น|เปลี่ยนเป็น|เปลี่ยน|สร้างเว็บไซต์|สร้างเว็บ|ทำเว็บไซต์|ทำเว็บ|เพิ่ม)\s*/iu', '', $firstLine) ?? $firstLine;
         $firstLine = trim($firstLine);
 
-        return $firstLine !== '' ? mb_substr($firstLine, 0, 110) : $fallback;
+        if (mb_strlen($firstLine, 'UTF-8') > 75) {
+            $clauses = preg_split('/(?:\s+มีหน้าร้าน|\s+รองรับ|\s+พร้อม|\s+โดยมี|\s+และมี|,)/u', $firstLine) ?: [$firstLine];
+            $short = trim($clauses[0] ?? '');
+            if ($short !== '' && mb_strlen($short, 'UTF-8') >= 6) {
+                $firstLine = $short;
+            }
+        }
+
+        if ($firstLine === '') {
+            return $brand !== '' ? $brand : $fallback;
+        }
+
+        return mb_substr($firstLine, 0, 110);
     }
 
     private function sanitizeBlueprint(array $candidate, array $fallback, array $catalog): array

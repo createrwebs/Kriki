@@ -6,7 +6,7 @@
     "keywords": ["laravel", "livewire", "ai", "website-builder", "saas", "krikkit"],
     "license": "proprietary",
     "require": {
-        "php": "^8.3",
+        "php": "^8.4.1",
         "artesaos/seotools": "^1.4",
         "bacon/bacon-qr-code": "^3.1",
         "blade-ui-kit/blade-heroicons": "^2.7",

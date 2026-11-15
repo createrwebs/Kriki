@@ -16,7 +16,7 @@ export default function ContactInbox({ projectUuid, module, writable }) {
     }
     return <section className="studio-desk mt-5 border-t border-krikkit-line pt-4" aria-label="กล่องข้อความติดต่อ"><div className="flex flex-wrap items-center justify-between gap-3"><h3 className="font-semibold">กล่องข้อความติดต่อ</h3><button className={`px-3 py-2 ${LAB_BTN_OUTLINE}`} disabled={busy} onClick={() => { setError(''); load().catch(err => setError(err.message)) }}>โหลดข้อความล่าสุด</button></div>
         {error ? <p role="alert" className="mt-3 text-red-600">{error}</p> : null}
-        {items === null ? <p className="mt-3" role="status">กำลังโหลดข้อความ…</p> : items.length === 0 ? (
+        {items === null ? (!error ? <p className="mt-3" role="status">กำลังโหลดข้อความ…</p> : null) : items.length === 0 ? (
             <div className="studio-empty mt-4"><h4>ยังไม่มีข้อความใหม่</h4><p>เมื่อมีผู้ส่งฟอร์มติดต่อ ข้อความและช่องทางติดต่อกลับจะแสดงที่นี่</p></div>
         ) : <>
             <p className="mt-3 text-xs text-krikkit-muted">แสดงข้อความล่าสุดสูงสุด 100 รายการ</p>

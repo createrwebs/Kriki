@@ -458,8 +458,16 @@ export function LabApp({ initialProject = null, initialWorkspace = false } = {})
     useEffect(() => {
         if (!projectUuid || !building) return undefined
 
+        const wantsModules = (
+            (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('panel') === 'modules')
+            || vfs.workspaceViewRef.current?.panel === 'modules'
+        )
         vfs.openConsoleFromChat({ focus: false })
-        vfs.openPreviewFromChat()
+        if (wantsModules) {
+            vfs.openModulesFromChat()
+        } else {
+            vfs.openPreviewFromChat()
+        }
 
         return () => {
             void import('./lib/labPreboot').then((m) => m.resetLabRuntimeWarm?.())
@@ -495,8 +503,16 @@ export function LabApp({ initialProject = null, initialWorkspace = false } = {})
 
             tryHealGuestStubs()
 
+            const wantsModules = (
+                (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('panel') === 'modules')
+                || vfs.workspaceViewRef.current?.panel === 'modules'
+            )
             vfs.openConsoleFromChat({ focus: false })
-            vfs.openPreviewFromChat()
+            if (wantsModules) {
+                vfs.openModulesFromChat()
+            } else {
+                vfs.openPreviewFromChat()
+            }
         })()
 
         return undefined
@@ -832,6 +848,8 @@ export function LabApp({ initialProject = null, initialWorkspace = false } = {})
                 openConsoleSignal={vfs.openConsoleSignal}
                 openPreviewSignal={vfs.openPreviewSignal}
                 openTablesSignal={vfs.openTablesSignal}
+                openModulesSignal={vfs.openModulesSignal}
+                onOpenModules={vfs.openModulesFromChat}
                 onPanelChange={vfs.handleWorkspaceView}
                 onRequestCloseTab={vfs.handleRequestCloseTab}
                 onWorkspaceCommand={onWorkspaceCommand}

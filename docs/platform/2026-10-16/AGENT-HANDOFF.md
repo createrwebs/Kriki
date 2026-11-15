@@ -14,7 +14,7 @@ Updated: 2026-10-16 Asia/Bangkok · Planning package, not product completion
 ## Workspace facts
 
 - Root: D:/codea/krikkit-ai-website; PowerShell; local app localhost:8889. No production domain/DNS/public deployment change is implied by a local test.
-- Laravel13/PHP>=8.3; Livewire4/Blade marketing; React19/Vite Lab. Existing PHP project support is not evidence of safe isolated execution.
+- Laravel13/PHP>=8.4.1; Livewire4/Blade marketing; React19/Vite Lab. Existing PHP project support is not evidence of safe isolated execution.
 - Control plane: local MySQL. Regressions: SQLite memory/fake HTTP. Business data: account-linked Supabase with exact reference pinning. Read encrypted credentials only through existing brokers; never print .env/keys.
 - QA project:46093d82-8770-4a42-8e6d-58c153600000. Managed form:bb1077af-4011-45a1-bec2-37f880d72717. Contains fictional agent QA records and possible user tests; do not overwrite/delete or modify unrelated rows. Prefer a new test project when needing a pristine fixture.
 - Last known publication: http://3n7fkr9vx1a3.localhost:8889. Check actual availability/session at execution; do not assume the old browser handle remains attached or request login while an authenticated Chrome session exists.

@@ -1,6 +1,6 @@
 # Guided Site Builder: Signup → Structure → Multi-page Design
 
-วันที่: 2026-10-16 · สถานะ: Approved design; Part 1 signup implemented, Parts 2/3 pending
+วันที่: 2026-10-16 · สถานะ: Approved design; Part 1 signup, Part 2A drafts, Part 2B source/materialization และ initial AI planner/editor implemented locally; managed/live gates remain open
 
 บันทึกความคืบหน้าหลังอนุมัติ: ส่วนสมัคร/โปรไฟล์บริษัทตาม§3 ส่งมอบและตรวจแยกแล้วบน local; หลักฐานอยู่ใน `Support/GUIDED-BUILDER-SIGNUP.md` และ delivery index. ข้อความเกี่ยวกับ “รอบออกแบบ” ด้านล่างเป็นบริบทเดิม ไม่ใช่ข้ออ้างว่าทั้ง builder/AI/canvas ใช้งานได้แล้ว.
 

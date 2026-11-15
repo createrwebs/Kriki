@@ -2,6 +2,7 @@ import { formsRequest } from './forms.js'
 
 const root = project => `/lab/${encodeURIComponent(project)}/modules`
 export const listModules = project => formsRequest(root(project))
+export const getTemplatePlan = project => formsRequest(`${root(project)}/template-plan`)
 export const selectModule = (project, key, enabled, expected_revision) => formsRequest(`${root(project)}/capabilities/${encodeURIComponent(key)}`, {
     method: 'PUT', body: JSON.stringify({ enabled, expected_revision }),
 })

@@ -163,7 +163,7 @@ export function CatalogDesk({ projectUuid, module, writable }) {
             </button>
         </form>
 
-        {items === null ? <p className="mt-3" role="status">กำลังโหลดสินค้า…</p> : items.length === 0 ? <p className="studio-empty mt-4">ยังไม่มีสินค้าในระบบ เพิ่มสินค้ารายการแรกเพื่อเริ่มจัดหน้าร้านของคุณ</p> : (
+        {items === null ? (!error ? <p className="mt-3" role="status">กำลังโหลดสินค้า…</p> : null) : items.length === 0 ? <p className="studio-empty mt-4">ยังไม่มีสินค้าในระบบ เพิ่มสินค้ารายการแรกเพื่อเริ่มจัดหน้าร้านของคุณ</p> : (
             <div className="studio-record-list mt-4 space-y-2">
                 {items.map(item => (
                     <article key={item.uuid} className="rounded-lg border border-krikkit-line p-3">
@@ -262,7 +262,7 @@ export function PromptPaySettingsDesk({ projectUuid, module, writable }) {
         {error ? <p role="alert" className="mt-3 text-sm text-red-600">{error}</p> : null}
         {notice ? <p role="status" className="mt-3 text-sm">{notice}</p> : null}
 
-        {!settings ? <p className="mt-3" role="status">กำลังโหลดการตั้งค่า PromptPay…</p> : (
+        {!settings ? (!error ? <p className="mt-3" role="status">กำลังโหลดการตั้งค่า PromptPay…</p> : null) : (
             <div className="studio-settings-layout">
             <form onSubmit={save} className="mt-4 space-y-3 rounded-xl border border-krikkit-line p-3">
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -409,7 +409,7 @@ export function OrdersDesk({ projectUuid, module, paymentModule, writable }) {
         {error ? <p role="alert" className="mt-3 text-sm text-red-600">{error}</p> : null}
         {notice ? <p role="status" className="mt-3 text-sm">{notice}</p> : null}
 
-        {orders === null ? <p className="mt-3">กำลังโหลดรายการคำสั่งซื้อ…</p> : orders.length === 0 ? <p className="mt-3 text-krikkit-muted">ยังไม่มีคำสั่งซื้อเข้ามา</p> : (
+        {orders === null ? (!error ? <p className="mt-3">กำลังโหลดรายการคำสั่งซื้อ…</p> : null) : orders.length === 0 ? <p className="mt-3 text-krikkit-muted">ยังไม่มีคำสั่งซื้อเข้ามา</p> : (
             <div className="mt-4 space-y-3">
                 {orders.map(order => {
                     const itemsList = Array.isArray(order.items) ? order.items : []

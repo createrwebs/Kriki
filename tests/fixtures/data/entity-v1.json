@@ -1,0 +1,10 @@
+{
+  "entity_uuid": "10000000-0000-4000-8000-000000000001",
+  "label": "รถยนต์",
+  "version": 1,
+  "fields": {
+    "10000000-0000-4000-8000-000000000002": {"label":"เลขทะเบียน","type":"text","required":true,"archived":false,"config":{}},
+    "10000000-0000-4000-8000-000000000003": {"label":"ปีจดทะเบียน","type":"integer","required":false,"archived":false,"config":{}},
+    "10000000-0000-4000-8000-000000000004": {"label":"ประเภท","type":"select","required":false,"archived":false,"config":{"options":["รถยนต์","รถจักรยานยนต์"]}}
+  }
+}

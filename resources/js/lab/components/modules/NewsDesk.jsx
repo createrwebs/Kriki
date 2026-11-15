@@ -145,7 +145,7 @@ export default function NewsDesk({ projectUuid, module, writable }) {
             </button>
         </form>
 
-        {items === null ? <p className="mt-3" role="status">กำลังโหลดรายการข่าว…</p> : items.length === 0 ? <p className="studio-empty mt-4">ยังไม่มีข่าวสาร เริ่มเขียนบทความแรกและบันทึกเป็นแบบร่างได้</p> : (
+        {items === null ? (!error ? <p className="mt-3" role="status">กำลังโหลดรายการข่าว…</p> : null) : items.length === 0 ? <p className="studio-empty mt-4">ยังไม่มีข่าวสาร เริ่มเขียนบทความแรกและบันทึกเป็นแบบร่างได้</p> : (
             <div className="studio-record-list mt-4 space-y-2">
                 {items.map(item => (
                     <article key={item.uuid} className="rounded-lg border border-krikkit-line p-3">

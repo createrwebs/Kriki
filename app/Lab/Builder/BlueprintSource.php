@@ -13,6 +13,7 @@ final class BlueprintSource
         $hash = hash('sha256', $this->json($blueprint, false));
         $public = array_intersect_key($blueprint, array_flip(['kind', 'title', 'shared', 'theme', 'pages']));
         $catalog = array_intersect_key((new TemplateCatalog)->all(), array_flip(['palettes', 'fonts', 'radii']));
+        $integrationPlan = (new TemplateCatalog)->integrationPlan($blueprint['template_id']);
         $manifest = ['draft_uuid' => $draftUuid, 'draft_revision' => $revision, 'blueprint_hash' => $hash, 'renderer_version' => self::RENDERER_VERSION];
         $files = [
             'package.json' => $this->json([
@@ -30,6 +31,7 @@ final class BlueprintSource
             'src/krikkit-site/site.css' => file_get_contents(resource_path('js/builder/site.css')),
             'src/krikkit-site/site.json' => $this->json($public),
             'src/krikkit-site/catalog.json' => $this->json($catalog),
+            'src/krikkit-site/integration-plan.json' => $this->json($integrationPlan),
             'src/krikkit-site/source-manifest.json' => $this->json($manifest),
         ];
 

@@ -8,6 +8,7 @@ Route::patch('/lab/{project}/operations/{operation}', [\App\Http\Controllers\Lab
 
 Route::prefix('/lab/{project}/modules')->middleware('throttle:60,1')->group(function () {
     Route::get('/build-context', [LabModuleController::class, 'buildContext']);
+    Route::get('/template-plan', [LabModuleController::class, 'templatePlan']);
     Route::get('/', [LabModuleController::class, 'index']);
     Route::put('/capabilities/{key}', [LabModuleController::class, 'capability']);
     Route::post('/', [LabModuleController::class, 'store']);

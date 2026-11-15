@@ -150,7 +150,7 @@ export function WorkspaceStage({
             )}
 
             {panel === 'forms' ? <Suspense fallback={<p className="p-6">กำลังโหลดฟอร์ม…</p>}><FormsDesk projectUuid={projectUuid} onAskLab={onAskLab} /></Suspense> : null}
-            {panel === 'modules' ? <Suspense fallback={<p className="p-6">กำลังโหลด widget…</p>}><ModulesDesk key={projectUuid} projectUuid={projectUuid} vfsContents={vfsContents} /></Suspense> : null}
+            {panel === 'modules' ? <Suspense fallback={<p className="p-6">กำลังโหลด widget…</p>}><ModulesDesk key={projectUuid} projectUuid={projectUuid} vfsContents={vfsContents} onConnectDatastore={onConnectDatastore} /></Suspense> : null}
 
             {panel !== 'console' && panel !== 'files' && panel !== 'preview' && panel !== 'app-settings' && panel !== 'tables' && panel !== 'forms' && panel !== 'modules' && (
                 panel === 'editor' ? (

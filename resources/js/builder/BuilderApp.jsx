@@ -102,6 +102,9 @@ export function BuilderApp({ bootstrap }) {
   const fileInputRef = useRef(null);
   const [projectsList, setProjectsList] = useState([]);
   const [loadingProjects, setLoadingProjects] = useState(false);
+  // Keep this new entry state after the long-lived editor state so headless
+  // regression fixtures that inspect the existing hook slots stay stable.
+  const [startMode, setStartMode] = useState("template");
   const dirty = Boolean(
     blueprint &&
       (saved === null || !sameBlueprint(blueprint, JSON.parse(saved))),
@@ -281,6 +284,7 @@ export function BuilderApp({ bootstrap }) {
     setBlueprint(null);
     setCreatedProject(null);
     setDraft({ uuid: null, revision: null });
+    setStartMode("template");
     setSaved(null);
     setHistory([]);
     setPendingCreate(null);
@@ -309,6 +313,42 @@ export function BuilderApp({ bootstrap }) {
       setNotice("");
     } catch (e) {
       setError(e);
+    }
+  };
+  const startAiPlan = async () => {
+    if (busyRef.current || loading) return;
+    const prompt = String(summary || "").trim();
+    if (!prompt) {
+      setError({ message: "กรุณาเขียน Brief ให้ AI วางแผนเว็บไซต์ก่อน" });
+      return;
+    }
+    busyRef.current = true;
+    setAiLoading(true);
+    setError(null);
+    setNotice("กำลังวางแผนโครงสร้างเว็บไซต์จาก Brief…");
+    try {
+      const result = await builderRequest("/lab/builder/ai-plan", {
+        method: "POST",
+        body: { prompt: prompt.slice(0, 2000), kind, template_id: templateId, title },
+      });
+      if (!result?.blueprint || Object.keys(validateBlueprint(result.blueprint, catalog)).length) {
+        throw new Error("แผนจาก AI มีรูปแบบไม่ตรงกับโครงสร้างที่รองรับ ข้อมูลเดิมของคุณยังคงอยู่ครบถ้วน");
+      }
+      setBlueprint(result.blueprint);
+      setDraft({ uuid: null, revision: null });
+      setSaved(null);
+      setHistory([]);
+      setPageId(result.blueprint.pages[0].id);
+      setTitle(result.blueprint.title);
+      setSummary(result.blueprint.summary);
+      setTemplateId(result.blueprint.template_id);
+      setNotice(`${result.message || "สร้างแผนเว็บไซต์แล้ว"} ตรวจหน้าและกด Save draft เมื่อพร้อม`);
+    } catch (e) {
+      setError(e);
+      setNotice("");
+    } finally {
+      busyRef.current = false;
+      setAiLoading(false);
     }
   };
   const save = async () => {
@@ -501,8 +541,13 @@ export function BuilderApp({ bootstrap }) {
   const handleAiSectionTrigger = (targetPageId, targetSectionId, sectionHeading) => {
     if (targetPageId) setPageId(targetPageId);
     setAiScope("section");
-    setAiTargetSection({ id: targetSectionId, heading: sectionHeading || "ส่วนที่เลือก" });
-    setNotice(`เลือกเป้าหมาย AI: แก้ไขเฉพาะส่วน "${sectionHeading || "ส่วนที่เลือก"}" — พิมพ์คำสั่งในกล่อง ✨ สั่ง AI ด้านซ้ายได้เลย`);
+    setAiTargetSection({
+      id: targetSectionId,
+      sectionId: targetSectionId,
+      pageId: targetPageId || page?.id,
+      heading: sectionHeading || "ส่วนที่เลือก",
+    });
+    setNotice(`เลือกเป้าหมาย AI: แก้ไขเฉพาะส่วน "${sectionHeading || "ส่วนที่เลือก"}" — พิมพ์คำสั่งในแถบ ✨ AI บนส่วนนี้ หรือในกล่องด้านซ้ายได้เลย`);
   };
   const loadProjectsList = async () => {
     if (!storageReady) return;
@@ -537,6 +582,7 @@ export function BuilderApp({ bootstrap }) {
         setBlueprint(null);
         setCreatedProject(null);
         setDraft({ uuid: null, revision: null });
+    setStartMode("template");
         setSaved(null);
         setHistory([]);
         setPendingCreate(null);
@@ -686,49 +732,38 @@ export function BuilderApp({ bootstrap }) {
         ) : null}
         {storageReady ? (
           <details
-            className="builder-group"
-            style={{ marginBottom: "14px", background: "#ffffff", padding: "10px 14px", borderRadius: "10px", border: "1px solid #dce4de" }}
+            className="builder-group builder-project-drawer"
             onToggle={(e) => {
               if (e.currentTarget.open) loadProjectsList();
             }}
           >
-            <summary style={{ cursor: "pointer", fontWeight: 600, fontSize: "13px" }}>
+            <summary>
               🗂 จัดการโปรเจกต์และแบบร่างที่ทำแล้ว (เปิดดู / ลบโปรเจกต์เพื่อคืนโควต้า / ลบแบบร่าง)
             </summary>
-            <div style={{ marginTop: "10px", display: "grid", gap: "12px" }}>
+            <div className="builder-project-drawer-body">
               <div>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
-                  <strong style={{ fontSize: "12px" }}>โปรเจกต์เว็บไซต์ที่สร้างแล้ว (Created Projects)</strong>
-                  <button type="button" onClick={loadProjectsList} disabled={loadingProjects} style={{ fontSize: "11px", padding: "3px 8px" }}>
+                <div className="builder-project-drawer-head">
+                  <strong>โปรเจกต์เว็บไซต์ที่สร้างแล้ว (Created Projects)</strong>
+                  <button type="button" className="builder-btn-sm" onClick={loadProjectsList} disabled={loadingProjects}>
                     {loadingProjects ? "กำลังโหลด…" : "↻ รีเฟรชรายการโปรเจกต์"}
                   </button>
                 </div>
                 {projectsList.length ? (
-                  <div style={{ display: "grid", gap: "6px" }}>
+                  <div className="builder-project-list">
                     {projectsList.map((proj) => (
                       <div
                         key={proj.uuid}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          gap: "8px",
-                          padding: "8px 10px",
-                          borderRadius: "8px",
-                          background: "#f5f8f4",
-                          border: "1px solid #dce4de",
-                        }}
+                        className="builder-project-card"
                       >
                         <div>
-                          <strong style={{ fontSize: "12px", display: "block" }}>{proj.title}</strong>
+                          <strong>{proj.title}</strong>
                           <small className="builder-hint">{proj.project_type} · {proj.uuid.slice(0, 8)}</small>
                         </div>
-                        <div className="builder-row-actions" style={{ gap: "6px" }}>
-                          <a href={proj.workspace_url} style={{ fontSize: "11px" }}>เปิด Workspace</a>
+                        <div className="builder-row-actions">
+                          <a href={proj.workspace_url} className="builder-btn-sm">เปิด Workspace</a>
                           <button
                             type="button"
-                            className="builder-danger"
-                            style={{ fontSize: "11px", padding: "4px 8px" }}
+                            className="builder-danger builder-btn-sm"
                             onClick={() => deleteProjectById(proj.uuid, proj.title)}
                             disabled={locked}
                           >
@@ -746,32 +781,23 @@ export function BuilderApp({ bootstrap }) {
               </div>
               {drafts.length ? (
                 <div>
-                  <strong style={{ fontSize: "12px", display: "block", marginBottom: "6px" }}>
+                  <strong className="builder-subheading">
                     แบบร่างที่บันทึกไว้ (Saved Drafts · {drafts.length})
                   </strong>
-                  <div style={{ display: "grid", gap: "6px" }}>
+                  <div className="builder-project-list">
                     {drafts.map((d) => (
                       <div
                         key={d.uuid}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          gap: "8px",
-                          padding: "8px 10px",
-                          borderRadius: "8px",
-                          background: "#fafbfa",
-                          border: "1px solid #dce4de",
-                        }}
+                        className="builder-draft-card"
                       >
                         <div>
-                          <strong style={{ fontSize: "12px", display: "block" }}>{d.title}</strong>
+                          <strong>{d.title}</strong>
                           <small className="builder-hint">{d.kind} · revision {d.revision}</small>
                         </div>
-                        <div className="builder-row-actions" style={{ gap: "6px" }}>
+                        <div className="builder-row-actions">
                           <button
                             type="button"
-                            style={{ fontSize: "11px", padding: "4px 8px" }}
+                            className="builder-btn-sm"
                             onClick={() => loadDraft(d.uuid)}
                             disabled={loading}
                           >
@@ -779,8 +805,7 @@ export function BuilderApp({ bootstrap }) {
                           </button>
                           <button
                             type="button"
-                            className="builder-danger"
-                            style={{ fontSize: "11px", padding: "4px 8px" }}
+                            className="builder-danger builder-btn-sm"
                             onClick={() => deleteDraftById(d.uuid, d.title)}
                             disabled={locked}
                           >
@@ -878,20 +903,30 @@ export function BuilderApp({ bootstrap }) {
               <section className="builder-start-section">
                 <h2>2. Choose how to start</h2>
                 <div className="builder-methods">
-                  <div className="builder-choice selected">
+                  <button
+                    type="button"
+                    className={startMode === "template" ? "builder-choice selected" : "builder-choice"}
+                    aria-pressed={startMode === "template"}
+                    onClick={() => setStartMode("template")}
+                  >
                     <strong>Template</strong>
                     <span>
                       Original designs with editable pages, sections and themes.
                     </span>
-                  </div>
-                  <button type="button" className="builder-choice" disabled>
-                    <strong>AI site builder · Coming later</strong>
+                  </button>
+                  <button
+                    type="button"
+                    className={startMode === "ai" ? "builder-choice selected" : "builder-choice"}
+                    aria-pressed={startMode === "ai"}
+                    onClick={() => setStartMode("ai")}
+                  >
+                    <strong>AI site builder</strong>
                     <span>
-                      AI planning is not connected. No AI credits are used here.
+                      เขียน Brief แล้วให้ตัวช่วยเสนอหน้า ส่วน และ widget ที่ตรวจแก้ได้ก่อนบันทึก
                     </span>
                   </button>
                 </div>
-                <div className="builder-template-grid">
+                {startMode === "template" ? <div className="builder-template-grid">
                   {compatible.map((t) => (
                     <button
                       type="button"
@@ -920,7 +955,12 @@ export function BuilderApp({ bootstrap }) {
                       </small>
                     </button>
                   ))}
-                </div>
+                </div> : (
+                  <div className="builder-ai-start" role="status">
+                    <strong>AI plan เป็นข้อเสนอที่ตรวจได้</strong>
+                    <p>ระบบจะสร้างแบบร่างจาก Brief โดยใช้เฉพาะ section และ widget ที่รองรับ จะยังไม่สร้างโปรเจกต์ ไม่เผยแพร่ และไม่แก้ข้อมูลธุรกิจ</p>
+                  </div>
+                )}
               </section>
               <section className="builder-start-section">
                 <h2>3. Give your design a name</h2>
@@ -931,7 +971,7 @@ export function BuilderApp({ bootstrap }) {
                   limit={120}
                 />
                 <Field
-                  label="Your website brief (optional)"
+                  label={startMode === "ai" ? "Website brief สำหรับ AI planner" : "Your website brief (optional)"}
                   value={summary}
                   onChange={setSummary}
                   multiline
@@ -940,10 +980,10 @@ export function BuilderApp({ bootstrap }) {
                 <button
                   type="button"
                   className="builder-primary"
-                  onClick={start}
-                  disabled={loading}
+                  onClick={startMode === "ai" ? startAiPlan : start}
+                  disabled={loading || aiLoading}
                 >
-                  Open design workspace
+                  {startMode === "ai" ? (aiLoading ? "กำลังวางแผน…" : "✨ สร้างแผนด้วย AI") : "Open design workspace"}
                 </button>
               </section>
             </main>
@@ -952,10 +992,9 @@ export function BuilderApp({ bootstrap }) {
               <p>Resume one of your latest 20 designs.</p>
               {drafts.length ? (
                 drafts.map((d) => (
-                  <div key={d.uuid} style={{ display: "flex", gap: "6px", alignItems: "stretch", marginBottom: "6px" }}>
+                  <div key={d.uuid} className="builder-resume-row">
                     <button
                       type="button"
-                      style={{ flex: 1, marginBottom: 0 }}
                       onClick={() => loadDraft(d.uuid)}
                       disabled={loading}
                     >
@@ -967,7 +1006,6 @@ export function BuilderApp({ bootstrap }) {
                     <button
                       type="button"
                       className="builder-danger"
-                      style={{ width: "auto", padding: "0 10px", marginBottom: 0 }}
                       onClick={() => deleteDraftById(d.uuid, d.title)}
                       disabled={loading || busy}
                       title="ลบแบบร่างนี้"
@@ -1028,28 +1066,19 @@ export function BuilderApp({ bootstrap }) {
                   style={{ display: "none" }}
                   onChange={handleFileInputChange}
                 />
-                <div
-                  className="builder-ai-panel"
-                  style={{
-                    marginBottom: "14px",
-                    padding: "12px",
-                    borderRadius: "10px",
-                    background: "linear-gradient(145deg, #eef6f0 0%, #f7faf8 100%)",
-                    border: "1px solid #bcd4c5",
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", marginBottom: "6px" }}>
-                    <strong style={{ fontSize: "13px", color: "#184f33" }}>
+                <div className="builder-ai-panel">
+                  <div className="builder-ai-panel-head">
+                    <strong>
                       ✨ สั่ง AI ช่วยออกแบบและแก้ไขหน้าเว็บ
                     </strong>
                     {aiLoading ? (
-                      <small style={{ color: "#24734b", fontWeight: 600 }}>กำลังประมวลผล AI…</small>
+                      <small className="builder-ai-status">กำลังประมวลผล AI…</small>
                     ) : null}
                   </div>
-                  <p className="builder-hint" style={{ marginBottom: "8px" }}>
+                  <p className="builder-hint">
                     พิมพ์คำสั่งให้ AI แก้ไขเนื้อหา เพิ่มหน้า เพิ่มฟอร์ม/สินค้า/ข่าวสาร หรือเปลี่ยนโทนสีได้ทันที (กด Undo ย้อนกลับได้)
                   </p>
-                  <label className="builder-field" style={{ marginBottom: "8px" }}>
+                  <label className="builder-field">
                     <span>ขอบเขตที่ต้องการให้ AI แก้ไข</span>
                     <select
                       value={aiScope}
@@ -1065,7 +1094,7 @@ export function BuilderApp({ bootstrap }) {
                       ) : null}
                     </select>
                   </label>
-                  <label className="builder-field" style={{ marginBottom: "8px" }}>
+                  <label className="builder-field">
                     <span>คำสั่ง Prompt สำหรับ AI</span>
                     <textarea
                       rows={3}
@@ -1074,7 +1103,7 @@ export function BuilderApp({ bootstrap }) {
                       placeholder="เช่น เปลี่ยนเป็นเว็บคลินิกทันตกรรม โทนสีเขียวมิ้นต์ เพิ่มฟอร์มจองคิวที่มีช่องเลือกวันที่และแนบสลิป..."
                     />
                   </label>
-                  <div className="builder-row-actions" style={{ flexWrap: "wrap", gap: "6px", marginBottom: "8px" }}>
+                  <div className="builder-row-actions">
                     <button
                       type="button"
                       className="builder-primary"
@@ -1096,7 +1125,7 @@ export function BuilderApp({ bootstrap }) {
                       </button>
                     ) : null}
                   </div>
-                  <div className="builder-row-actions" style={{ flexWrap: "wrap", gap: "5px" }}>
+                  <div className="builder-row-actions">
                     {[
                       ["✨ เขียนเนื้อหาใหม่ตาม Brief", blueprint.summary || `ปรับปรุงเนื้อหาทุกหน้าของ ${blueprint.shared.brand} ให้เป็นมืออาชีพและน่าเชื่อถือ`, "all"],
                       ["📝 ให้ AI เพิ่มฟอร์มจองคิว/ติดต่อ", `เพิ่มแบบฟอร์มจองคิวและติดต่อเราในหน้า ${page.title} โดยมีช่อง ชื่อ เบอร์โทร อีเมล วันที่นัดหมาย เลือกบริการ และแนบไฟล์สลิป`, "page"],
@@ -1106,8 +1135,8 @@ export function BuilderApp({ bootstrap }) {
                       <button
                         key={label}
                         type="button"
+                        className="builder-preset-chip"
                         disabled={locked}
-                        style={{ fontSize: "11px", padding: "4px 8px" }}
                         onClick={() => {
                           setAiPrompt(presetPrompt);
                           setAiScope(presetScope);
@@ -1281,14 +1310,14 @@ export function BuilderApp({ bootstrap }) {
                   <h3>
                     Sections & Widgets ({page.title}) <span>{page.sections.length}/12</span>
                   </h3>
-                  <div className="builder-widget-bar" style={{ marginBottom: "12px", padding: "10px", borderRadius: "10px", background: "#f5f8f4", border: "1px solid #dce4de" }}>
-                    <strong style={{ display: "block", fontSize: "12px", marginBottom: "4px" }}>
+                  <div className="builder-widget-bar">
+                    <strong>
                       + เพิ่ม Widget ลงในหน้า "{page.title}"
                     </strong>
-                    <p className="builder-hint" style={{ marginBottom: "8px" }}>
+                    <p className="builder-hint">
                       เลือกหน้าจากแท็บ Pages ด้านบน แล้วกดปุ่มเพื่อเพิ่มแบบฟอร์ม (กำหนด field ได้), ข่าวสาร, สินค้า/ตะกร้า หรือคำถามพบบ่อยลงในหน้านั้นทันที
                     </p>
-                    <div className="builder-row-actions" style={{ flexWrap: "wrap", gap: "6px" }}>
+                    <div className="builder-row-actions">
                       <button
                         type="button"
                         disabled={page.sections.length >= 12}
@@ -1730,6 +1759,15 @@ export function BuilderApp({ bootstrap }) {
                 onEdit={edit}
                 onUploadImage={triggerImageUpload}
                 onAiSection={handleAiSectionTrigger}
+                aiTargetSection={aiTargetSection}
+                aiPrompt={aiPrompt}
+                onChangeAiPrompt={setAiPrompt}
+                onRunAiSection={(promptText, secId) => runAiEdit(promptText, "section", secId)}
+                onCloseAiSection={() => {
+                  setAiTargetSection(null);
+                  setAiScope("page");
+                }}
+                aiLoading={aiLoading}
               />
             </main>
           </div>

@@ -159,3 +159,54 @@
 @media (prefers-reduced-motion: reduce) {
     .krikkit-sales *, .krikkit-sales *::before, .krikkit-sales *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
+
+/* CreateAI visual refresh: a dark workbench and a quiet tiled reading surface. */
+.krikkit-sales { --sales-ground:#f1f7f6; --sales-paper:#fff; --sales-ink:#102d35; --sales-muted:#567077; --sales-brand:#087f94; --sales-line:#cfe5e3; --sales-tint:#dff3f1; background:var(--sales-ground); }
+.krikkit-sales header { background:#102d35; color:#fff; }
+.krikkit-sales header nav { padding-block:14px; }
+.krikkit-sales header nav a { color:#e4f4f1; }
+.krikkit-sales header nav a:hover { color:#fff; }
+.krikkit-sales header a.bg-accent { background:#d9f5ef; color:#102d35; }
+.krikkit-sales header a.bg-accent:hover { background:#fff; }
+.krikkit-sales .sales-hero { width:min(1320px,calc(100% - 48px)); margin-top:18px; padding:clamp(36px,6vw,76px); border-radius:24px; background:#102d35; color:#fff; grid-template-columns:.8fr 1.2fr; gap:clamp(36px,5vw,76px); }
+.krikkit-sales .sales-hero .sales-kicker { color:#82e6dc; }
+.krikkit-sales .sales-hero h1 { max-width:12ch; font-size:clamp(42px,5.2vw,72px); line-height:1.12; letter-spacing:-.055em; }
+.krikkit-sales .sales-hero .sales-lead { color:#d6e8e7; max-width:42ch; }
+.krikkit-sales .sales-hero .sales-fine { color:#a7c5c6; }
+.krikkit-sales .sales-hero .sales-button { background:#d9f5ef; border-color:#d9f5ef; color:#102d35; }
+.krikkit-sales .sales-hero .sales-button:hover { background:#fff; }
+.krikkit-sales .sales-hero .sales-text-link { color:#c4f1eb; }
+.krikkit-sales .sales-workbench { padding:16px; background:#174551; border-radius:16px; }
+.krikkit-sales .sales-stage-heading { color:#fff; }
+.krikkit-sales .sales-preview-tag { color:#a7c5c6; }
+.krikkit-sales .sales-stage-options button { color:#a7c5c6; }
+.krikkit-sales .sales-stage-options button[aria-pressed=true] { background:#d9f5ef; border-color:#d9f5ef; color:#102d35; }
+.krikkit-sales .sales-preview-frame { border:0; border-radius:10px; }
+.krikkit-sales .sales-brief { border-radius:10px; background:#f7fffd; }
+.krikkit-sales .sales-brief > svg { color:var(--sales-brand); }
+.krikkit-sales .sales-workbench figcaption { color:#c4dcdc; }
+.krikkit-sales .sales-intro { width:min(1320px,calc(100% - 48px)); margin-top:18px; padding:clamp(34px,5vw,66px); border-radius:24px; background:#dff3f1; }
+.krikkit-sales .sales-intro h2 { max-width:13ch; font-size:clamp(30px,3.6vw,50px); line-height:1.16; }
+.krikkit-sales .sales-intro > p { color:var(--sales-ink); max-width:52ch; font-size:17px; }
+.krikkit-sales .sales-examples,.krikkit-sales .sales-workflow,.krikkit-sales .sales-readiness { padding-block:clamp(72px,9vw,132px); }
+.krikkit-sales .sales-section-heading { margin-bottom:48px; }
+.krikkit-sales .sales-section-heading h2 { max-width:13ch; font-size:clamp(30px,3.6vw,50px); line-height:1.16; }
+.krikkit-sales .sales-example-grid { gap:12px; }
+.krikkit-sales .sales-example-select { background:#fff; border-radius:14px; padding:10px; }
+.krikkit-sales .sales-example-image { border:0; border-radius:8px; }
+.krikkit-sales .sales-example-title { padding:4px 6px 2px; color:var(--sales-ink); }
+.krikkit-sales .sales-example-action { color:var(--sales-brand); }
+.krikkit-sales .sales-prompt-panel { background:#102d35; color:#fff; border-radius:14px; }
+.krikkit-sales .sales-prompt-panel .sales-mini-title,.krikkit-sales .sales-prompt-panel .sales-fine { color:#a7e7df; }
+.krikkit-sales .sales-prompt-panel .sales-button-secondary { background:#d9f5ef; border-color:#d9f5ef; color:#102d35; }
+.krikkit-sales .sales-benefits { background:#fff; }
+.krikkit-sales .sales-benefit-list article { padding:22px 0; border-bottom:1px solid var(--sales-line); }
+.krikkit-sales .sales-benefit-icon { color:var(--sales-brand); }
+.krikkit-sales .sales-pricing { background:#102d35; color:#fff; border-radius:18px; }
+.krikkit-sales .sales-pricing p:not(.sales-kicker),.krikkit-sales .sales-pricing .sales-fine { color:#c4dcdc; }
+.krikkit-sales .sales-pricing .sales-button { background:#d9f5ef; border-color:#d9f5ef; color:#102d35; }
+.krikkit-sales footer { background:#102d35; color:#fff; }
+.krikkit-sales footer p,.krikkit-sales footer a,.krikkit-sales footer [class*=text-] { color:#c4dcdc; }
+.krikkit-sales footer a:hover { color:#fff; }
+.krikkit-sales footer button { background:#d9f5ef; color:#102d35; }
+@media (max-width:800px) { .krikkit-sales .sales-hero,.krikkit-sales .sales-intro { width:calc(100% - 24px); border-radius:18px; } .krikkit-sales .sales-hero { grid-template-columns:1fr; padding:28px 20px 20px; } .krikkit-sales .sales-hero h1 { max-width:11ch; font-size:clamp(40px,12vw,60px); } .krikkit-sales .sales-intro { padding:28px 22px; } .krikkit-sales .sales-intro h2 { max-width:18ch; } }

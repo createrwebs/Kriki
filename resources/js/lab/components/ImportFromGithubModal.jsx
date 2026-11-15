@@ -169,7 +169,9 @@ export function ImportFromGithubModal({
                 setLinked(false)
                 setConnected(false)
                 setAccounts([])
-                failDeskPulse(err.message || t.githubUnavailable)
+                const msg = err.message || t.githubUnavailable
+                setError(msg)
+                failDeskPulse(msg)
             })
             .finally(() => setLoadingAccounts(false))
     }
@@ -266,7 +268,9 @@ export function ImportFromGithubModal({
             .catch((err) => {
                 if (cancelled) return
                 setRepos([])
-                failDeskPulse(err.message || t.noRepositoriesFound)
+                const msg = err.message || t.noRepositoriesFound
+                setError(msg)
+                failDeskPulse(msg)
             })
             .finally(() => {
                 if (! cancelled) setLoadingRepos(false)
@@ -300,7 +304,9 @@ export function ImportFromGithubModal({
                 if (cancelled) return
                 setBranches([])
                 setBranch(selected.default_branch || 'main')
-                failDeskPulse(err.message || t.noRepositoriesFound)
+                const msg = err.message || t.noRepositoriesFound
+                setError(msg)
+                failDeskPulse(msg)
             })
             .finally(() => {
                 if (! cancelled) setLoadingBranches(false)
@@ -346,7 +352,9 @@ export function ImportFromGithubModal({
                 onClose?.()
                 return
             }
-            failDeskPulse(err.message || t.enterPublicGithubUrl)
+            const msg = err.message || t.enterPublicGithubUrl
+            setError(msg)
+            failDeskPulse(msg)
         } finally {
             setImporting(false)
         }
@@ -369,7 +377,9 @@ export function ImportFromGithubModal({
             setSelectedKey('')
             await refreshAccounts()
         } catch (err) {
-            failDeskPulse(err.message || t.noGithubAccount)
+            const msg = err.message || t.noGithubAccount
+            setError(msg)
+            failDeskPulse(msg)
         } finally {
             setUnlinking(false)
         }
@@ -413,6 +423,11 @@ export function ImportFromGithubModal({
                 </div>
 
                 <div className="krikkit-scroll-hover min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5">
+                    {error ? (
+                        <p role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 px-3.5 py-2.5 text-xs font-medium text-red-600 dark:text-red-300">
+                            {error}
+                        </p>
+                    ) : null}
                     <section className="space-y-2">
                         <h3 className={labelClass}>{t.importFromAUrl}</h3>
                         <input

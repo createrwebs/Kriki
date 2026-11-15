@@ -77,7 +77,7 @@ trait ManagesPackForm
                 'model' => 'Sonnet',
                 'input' => number_format(800),
                 'output' => number_format(200),
-                'credits' => $meter->quote($short, 'claude-sonnet-4-5'),
+                'credits' => $meter->quote($short, 'claude-sonnet-5'),
             ],
             [
                 'scenario' => __('dashboard.Follow-up turn'),
@@ -91,7 +91,7 @@ trait ManagesPackForm
                 'model' => 'Sonnet',
                 'input' => number_format(12_000),
                 'output' => number_format(8_000),
-                'credits' => $meter->quote($followUp, 'claude-sonnet-4-5'),
+                'credits' => $meter->quote($followUp, 'claude-sonnet-5'),
             ],
             [
                 'scenario' => __('dashboard.Large codegen'),
@@ -112,7 +112,7 @@ trait ManagesPackForm
                 'model' => 'Sonnet',
                 'input' => number_format(45_000),
                 'output' => number_format(70_000),
-                'credits' => $meter->quote($codegen, 'claude-sonnet-4-5'),
+                'credits' => $meter->quote($codegen, 'claude-sonnet-5'),
             ],
         ];
     }

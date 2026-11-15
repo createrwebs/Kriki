@@ -48,4 +48,31 @@ final class TemplateCatalog
             'pages' => $pages,
         ]);
     }
+
+    /** Code-owned mapping from a visual template to owner-reviewed modules. */
+    public function integrationPlan(string $templateId): array
+    {
+        $templates = array_column($this->all()['templates'], null, 'id');
+        abort_unless(isset($templates[$templateId]), 422, 'Unknown website template.');
+        $plans = [
+            'business-studio' => [['module' => 'contact', 'route' => '/contact', 'label' => 'ฟอร์มติดต่อ']],
+            'portfolio-editorial' => [['module' => 'contact', 'route' => '/contact', 'label' => 'ฟอร์มติดต่อ']],
+            'blog-journal' => [
+                ['module' => 'news', 'route' => '/articles', 'label' => 'ข่าวสารและบทความ'],
+                ['module' => 'contact', 'route' => '/contact', 'label' => 'ฟอร์มติดต่อ'],
+            ],
+            'storefront-demo' => [
+                ['module' => 'catalog', 'route' => '/products', 'label' => 'สินค้า'],
+                ['module' => 'orders', 'route' => '/products', 'label' => 'ตะกร้าและคำสั่งซื้อ'],
+                ['module' => 'manual_payments', 'route' => '/products', 'label' => 'PromptPay และตรวจสลิป'],
+            ],
+        ];
+        return [
+            'version' => 1,
+            'template_id' => $templateId,
+            'setup_mode' => 'owner_reviewed_modules',
+            'modules' => $plans[$templateId] ?? [],
+            'notes' => ['เตรียมโมดูลและตรวจ schema ก่อนฝังวิดเจ็ต', 'การเปิดรับข้อมูลจริงต้องผ่าน readiness gate ของโปรเจกต์'],
+        ];
+    }
 }

@@ -23,6 +23,16 @@ final class LabModuleController extends Controller
         abort_unless($request->query() === [], 422);
         return $this->respond(['context' => $artifacts->context($project)]);
     }
+
+    public function templatePlan(Request $request, LabProject $project, \App\Lab\SiteWorkspace $workspace): JsonResponse
+    {
+        \App\Lab\LabProjectAccess::assertOwner($project, $request->user());
+        $path = $workspace->root($project).'/src/krikkit-site/integration-plan.json';
+        if (!is_file($path)) return $this->respond(['plan' => null]);
+        $plan = json_decode($workspace->read($project, 'src/krikkit-site/integration-plan.json'), true);
+        abort_unless(is_array($plan) && ($plan['version'] ?? null) === 1 && is_array($plan['modules'] ?? null), 409, 'Template integration plan is invalid.');
+        return $this->respond(['plan' => $plan]);
+    }
     public function index(Request $request, LabProject $project, ModuleInstallations $modules): JsonResponse
     {
         return $this->respond($modules->listing($request->user(), $project));

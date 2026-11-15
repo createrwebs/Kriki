@@ -226,6 +226,7 @@ function TabGlyph({ name, className = 'h-3.5 w-3.5' }) {
 }
 
 const FILES_TAB_ID = 'tab-files-pinned'
+const MODULES_TAB_ID = 'tab-modules-init'
 const FILES_TAB = Object.freeze({
     id: FILES_TAB_ID,
     label: 'Files',
@@ -234,9 +235,21 @@ const FILES_TAB = Object.freeze({
     path: null,
     pinned: true,
 })
+const MODULES_TAB = Object.freeze({
+    id: MODULES_TAB_ID,
+    label: 'หลังบ้าน (Admin)',
+    tone: 'teal',
+    panel: 'modules',
+    path: null,
+})
 
 function isPinnedTab(tab) {
     return Boolean(tab?.pinned || tab?.id === FILES_TAB_ID || tab?.panel === 'files')
+}
+
+function wantsInitialModulesPanel() {
+    if (typeof window === 'undefined') return false
+    return new URLSearchParams(window.location.search).get('panel') === 'modules'
 }
 
 /**
@@ -248,13 +261,20 @@ export function WorkspaceTabs({
     openConsoleSignal = null,
     openPreviewSignal = null,
     openTablesSignal = null,
+    openModulesSignal = null,
     dirtyPaths = {},
     onRequestCloseTab = null,
     onWorkspaceCommand = null,
 }) {
-    const [previewOn, setPreviewOn] = useState(true)
-    const [tabs, setTabs] = useState(() => [{ ...FILES_TAB }])
-    const [activeId, setActiveId] = useState(FILES_TAB_ID)
+    const [previewOn, setPreviewOn] = useState(() => ! wantsInitialModulesPanel())
+    const [tabs, setTabs] = useState(() => (
+        wantsInitialModulesPanel()
+            ? [{ ...FILES_TAB }, { ...MODULES_TAB }]
+            : [{ ...FILES_TAB }]
+    ))
+    const [activeId, setActiveId] = useState(() => (
+        wantsInitialModulesPanel() ? MODULES_TAB_ID : FILES_TAB_ID
+    ))
     const [menuOpen, setMenuOpen] = useState(false)
     const [menuPos, setMenuPos] = useState({ top: 0, left: 0 })
     const menuRef = useRef(null)
@@ -422,12 +442,17 @@ export function WorkspaceTabs({
         openTab('Supabase', 'teal', 'tables')
     }, [openTablesSignal, openTab])
 
+    useEffect(() => {
+        if (! openModulesSignal?.nonce) return
+        openTab('หลังบ้าน (Admin)', 'teal', 'modules', { unique: false })
+    }, [openModulesSignal, openTab])
+
     const onMenuSelect = useCallback((itemId) => {
         setMenuOpen(false)
 
         switch (itemId) {
             case 'modules':
-                openTab('หลังบ้าน (Admin)', 'teal', 'modules', { unique: true })
+                openTab('หลังบ้าน (Admin)', 'teal', 'modules', { unique: false })
                 break
             case 'forms':
                 openTab('Forms', 'teal', 'forms')
@@ -563,7 +588,7 @@ export function WorkspaceTabs({
                 type="button"
                 onClick={() => {
                     setPreviewOn(false)
-                    openTab('หลังบ้าน (Admin)', 'teal', 'modules', { unique: true })
+                    openTab('หลังบ้าน (Admin)', 'teal', 'modules', { unique: false })
                 }}
                 className={[
                     'relative inline-flex h-8 shrink-0 items-center gap-1.5 px-2.5 text-xs font-medium transition',

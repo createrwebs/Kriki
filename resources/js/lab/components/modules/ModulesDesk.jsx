@@ -1,7 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { Package, ReceiptText, CreditCard, Newspaper, Inbox, Settings2, ArrowUpRight, RefreshCw } from 'lucide-react'
 import '../../../../css/studio.css'
-import {
+import * as modulesApi from '../../lib/modules.js'
+import { moduleBufferConflicts } from '../../lib/moduleSource.js'
+import ContactInbox from './ContactInbox.jsx'
+import NewsDesk from './NewsDesk.jsx'
+import { CatalogDesk, OrdersDesk, PromptPaySettingsDesk } from './CommerceDesk.jsx'
+import { LAB_BTN_OUTLINE, LAB_BTN_PRIMARY } from '../../lib/labConstants'
+
+const {
     applyModuleProposal,
     cancelModuleProposal,
     embedModule,
@@ -11,12 +18,7 @@ import {
     proposeModuleSchema,
     selectModule,
     setModuleState,
-} from '../../lib/modules.js'
-import { moduleBufferConflicts } from '../../lib/moduleSource.js'
-import ContactInbox from './ContactInbox.jsx'
-import NewsDesk from './NewsDesk.jsx'
-import { CatalogDesk, OrdersDesk, PromptPaySettingsDesk } from './CommerceDesk.jsx'
-import { LAB_BTN_OUTLINE, LAB_BTN_PRIMARY } from '../../lib/labConstants'
+} = modulesApi
 
 const titles = {
     contact: 'ฟอร์มติดต่อ (Contact Form)',
@@ -44,10 +46,11 @@ const TAB_OPTIONS = [
     { id: 'overview', label: 'ระบบและฐานข้อมูล', icon: Settings2, moduleKey: null },
 ]
 
-export default function ModulesDesk({ projectUuid, vfsContents = {} }) {
+export default function ModulesDesk({ projectUuid, vfsContents = {}, onConnectDatastore = null }) {
     const currentBuffers = useRef(vfsContents)
     currentBuffers.current = vfsContents
     const [data, setData] = useState(null)
+    const [templatePlan, setTemplatePlan] = useState(null)
     const [activeTab, setActiveTab] = useState('catalog')
     const [busy, setBusy] = useState(false)
     const [error, setError] = useState('')
@@ -70,6 +73,7 @@ export default function ModulesDesk({ projectUuid, vfsContents = {} }) {
 
     useEffect(() => {
         setData(null)
+        setTemplatePlan(null)
         setProposal(null)
         setError('')
         setNotice('')
@@ -83,6 +87,11 @@ export default function ModulesDesk({ projectUuid, vfsContents = {} }) {
             .catch((err) => {
                 if (! cancelled) setError(err.message)
             })
+        if (typeof modulesApi.getTemplatePlan === 'function') {
+            modulesApi.getTemplatePlan(projectUuid)
+                .then((next) => { if (! cancelled) setTemplatePlan(next?.plan || null) })
+                .catch(() => { if (! cancelled) setTemplatePlan(null) })
+        }
         return () => {
             cancelled = true
         }
@@ -201,6 +210,7 @@ export default function ModulesDesk({ projectUuid, vfsContents = {} }) {
             setActiveTab('overview')
             setNotice('schema ของโมดูลที่รองรับพร้อมแล้ว เลือกเปิดใช้งานแต่ละโมดูลเมื่อพร้อมรับข้อมูลจริง')
         } catch (err) {
+            setNotice('')
             setError(err?.message || 'เตรียมโมดูลไม่สำเร็จ กรุณาลองใหม่อีกครั้ง')
         } finally {
             running.current = false
@@ -224,6 +234,78 @@ export default function ModulesDesk({ projectUuid, vfsContents = {} }) {
 
     const allReady = catalogReady && ordersReady && manualPaymentsReady && newsReady && contactReady
     const writable = Boolean(data?.business_writes_ready)
+    const recommendedRoute = (key, fallback = '/') => templatePlan?.modules?.find(item => item.module === key)?.route || fallback
+
+    const activeModuleKey = TAB_OPTIONS.find(tab => tab.id === activeTab)?.moduleKey || null
+    const activeModule = activeModuleKey ? data?.modules?.find(m => m.key === activeModuleKey) : null
+    const activeModuleReady = activeModule ? schemaReady(activeModule) : false
+
+    const toggleModuleEnabled = (mod) => {
+        if (!mod?.installation) return
+        return act(async () => {
+            const nextState = mod.installation.enabled ? 'disabled' : 'enabled'
+            await setModuleState(
+                projectUuid,
+                mod.installation.uuid,
+                nextState,
+                mod.installation.revision
+            )
+            setNotice(
+                nextState === 'enabled'
+                    ? `เปิดใช้งาน ${titles[mod.key] || mod.key} เรียบร้อยแล้ว สามารถเพิ่มและแก้ไขข้อมูลได้ทันที`
+                    : `ปิดรับข้อมูลใหม่ของ ${titles[mod.key] || mod.key} แล้ว`
+            )
+        })
+    }
+
+    const renderModuleWriteGateBanner = (mod) => {
+        if (!data || !mod || !schemaReady(mod)) return null
+        if (!writable) {
+            return (
+                <aside className="studio-write-gate-banner mb-4 rounded-xl border border-amber-300 bg-amber-50/90 p-3.5 text-xs text-amber-950" role="status">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                            <strong className="font-semibold text-amber-950">โหมดอ่านอย่างเดียว (Read-Only Gate): ระบบปิดการเขียนข้อมูลธุรกิจชั่วคราว</strong>
+                            <p className="mt-0.5 text-amber-900">
+                                ขณะนี้ค่า <code className="rounded bg-amber-100 px-1 py-0.5 font-mono text-[11px]">business_writes_ready = false</code> จึงสามารถดูข้อมูลและตรวจโครงสร้าง Schema ได้อย่างเดียว หากต้องการเปิดรับข้อมูลหรือบันทึกฟอร์ม กรุณาเปิด <code className="rounded bg-amber-100 px-1 py-0.5 font-mono text-[11px]">lab-modules.business_writes_enabled</code> ในระบบหลังบ้าน
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => setActiveTab('overview')}
+                            className={`rounded-lg px-3 py-1.5 text-xs font-medium ${LAB_BTN_OUTLINE}`}
+                        >
+                            ดูสถานะระบบและฐานข้อมูล
+                        </button>
+                    </div>
+                </aside>
+            )
+        }
+        if (!mod.installation?.enabled) {
+            return (
+                <aside className="studio-write-gate-banner mb-4 rounded-xl border border-teal-300 bg-teal-50/90 p-3.5 text-xs text-teal-950" role="status">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                            <strong className="font-semibold text-teal-950">โมดูลนี้ติดตั้งตารางฐานข้อมูลพร้อมแล้ว แต่ยังไม่ได้เปิดใช้งาน (ฟอร์มจึงถูกล็อกอยู่)</strong>
+                            <p className="mt-0.5 text-teal-900">
+                                กดปุ่มเปิดใช้งานด้านขวาเพื่อปลดล็อกฟอร์มและเริ่มเพิ่ม/แก้ไขข้อมูลของ {titles[mod.key] || mod.key} ได้ทันที
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            disabled={busy || !mod.selected || !mod.entitled}
+                            onClick={() => toggleModuleEnabled(mod)}
+                            className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold ${LAB_BTN_PRIMARY}`}
+                        >
+                            เปิดใช้งานโมดูลนี้ทันที
+                        </button>
+                    </div>
+                </aside>
+            )
+        }
+        return null
+    }
 
     return (
         <section className="studio-owner-container" aria-label="Owner Back-office">
@@ -246,6 +328,20 @@ export default function ModulesDesk({ projectUuid, vfsContents = {} }) {
                         >
                             <ArrowUpRight size={15} aria-hidden="true" /> แก้ไขหน้าเว็บ
                         </a>
+                        <button
+                            type="button"
+                            disabled={busy}
+                            className={`rounded-lg px-3 py-1.5 text-xs ${LAB_BTN_OUTLINE}`}
+                            onClick={() => {
+                                if (onConnectDatastore) {
+                                    onConnectDatastore()
+                                } else if (typeof window !== 'undefined') {
+                                    window.dispatchEvent(new CustomEvent('krikkit-datastore-await'))
+                                }
+                            }}
+                        >
+                            เชื่อมต่อฐานข้อมูล (Supabase)
+                        </button>
                         {! allReady && (
                             <button
                                 type="button"
@@ -266,6 +362,16 @@ export default function ModulesDesk({ projectUuid, vfsContents = {} }) {
                         </button>
                     </div>
                 </div>
+
+                {templatePlan?.modules?.length ? (
+                    <aside className="studio-template-plan" aria-label="แผนเชื่อมต่อจาก template">
+                        <strong>แผนระบบจาก template: {templatePlan.template_id}</strong>
+                        <span>จุดเชื่อมต่อเหล่านี้ถูกเตรียมไว้แล้ว แต่ยังต้องตรวจ schema และฝังวิดเจ็ตเป็นรายโมดูล</span>
+                        <div className="studio-template-plan-list">
+                            {templatePlan.modules.map(item => <span key={`${item.module}:${item.route}`}>{item.label} · {item.route}</span>)}
+                        </div>
+                    </aside>
+                ) : null}
 
             </div>
                 <nav className="studio-module-nav" aria-label="เมนูจัดการเว็บไซต์">
@@ -291,7 +397,30 @@ export default function ModulesDesk({ projectUuid, vfsContents = {} }) {
             {/* Content Body */}
             <div className="studio-module-content">
                 {! data && ! error ? <p role="status">กำลังโหลดข้อมูลระบบหลังบ้าน…</p> : null}
-                {error ? <p role="alert" className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p> : null}
+                {error ? (
+                    <div role="alert" className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+                        <span>
+                            {/Supabase project/i.test(error)
+                                ? `กรุณาเชื่อมต่อและเลือกโปรเจกต์ฐานข้อมูล (Supabase) ก่อนเตรียมโมดูล (${error})`
+                                : error}
+                        </span>
+                        {/Supabase project/i.test(error) ? (
+                            <button
+                                type="button"
+                                className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${LAB_BTN_PRIMARY}`}
+                                onClick={() => {
+                                    if (onConnectDatastore) {
+                                        onConnectDatastore()
+                                    } else if (typeof window !== 'undefined') {
+                                        window.dispatchEvent(new CustomEvent('krikkit-datastore-await'))
+                                    }
+                                }}
+                            >
+                                เชื่อมต่อฐานข้อมูล Supabase ทันที
+                            </button>
+                        ) : null}
+                    </div>
+                ) : null}
                 {notice ? <p role="status" className="mb-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800">{notice}</p> : null}
 
                 {/* Active Proposal View */}
@@ -325,12 +454,13 @@ export default function ModulesDesk({ projectUuid, vfsContents = {} }) {
                                     type="button"
                                     disabled={busy}
                                     className={`rounded-lg px-3 py-1.5 text-xs ${LAB_BTN_OUTLINE}`}
-                                    onClick={() => embed(catalogMod.installation, '/shop')}
+                                    onClick={() => embed(catalogMod.installation, recommendedRoute('catalog', '/shop'))}
                                 >
-                                    + ติดตั้งหน้าร้านค้าใน /shop
+                                    + ติดตั้งหน้าร้านค้าใน {recommendedRoute('catalog', '/shop')}
                                 </button>
                             )}
                         </div>
+                        {renderModuleWriteGateBanner(catalogMod)}
                         {catalogReady ? (
                             <CatalogDesk
                                 key={catalogMod.installation.uuid}
@@ -367,12 +497,13 @@ export default function ModulesDesk({ projectUuid, vfsContents = {} }) {
                                     type="button"
                                     disabled={busy}
                                     className={`rounded-lg px-3 py-1.5 text-xs ${LAB_BTN_OUTLINE}`}
-                                    onClick={() => embed(ordersMod.installation, '/')}
+                                    onClick={() => embed(ordersMod.installation, recommendedRoute('orders'))}
                                 >
-                                    + ฝังวิดเจ็ตตะกร้าสินค้าในหน้าหลัก
+                                    + ฝังวิดเจ็ตตะกร้าสินค้าใน {recommendedRoute('orders')}
                                 </button>
                             )}
                         </div>
+                        {renderModuleWriteGateBanner(ordersMod)}
                         {ordersReady ? (
                             <OrdersDesk
                                 key={ordersMod.installation.uuid}
@@ -410,12 +541,13 @@ export default function ModulesDesk({ projectUuid, vfsContents = {} }) {
                                     type="button"
                                     disabled={busy}
                                     className={`rounded-lg px-3 py-1.5 text-xs ${LAB_BTN_OUTLINE}`}
-                                    onClick={() => embed(manualPaymentsMod.installation, '/')}
+                                    onClick={() => embed(manualPaymentsMod.installation, recommendedRoute('manual_payments'))}
                                 >
-                                    + อัปเดตวิดเจ็ตชำระเงินในหน้าหลัก
+                                    + อัปเดตวิดเจ็ตชำระเงินใน {recommendedRoute('manual_payments')}
                                 </button>
                             )}
                         </div>
+                        {renderModuleWriteGateBanner(manualPaymentsMod)}
                         {manualPaymentsReady ? (
                             <PromptPaySettingsDesk
                                 key={manualPaymentsMod.installation.uuid}
@@ -452,12 +584,13 @@ export default function ModulesDesk({ projectUuid, vfsContents = {} }) {
                                     type="button"
                                     disabled={busy}
                                     className={`rounded-lg px-3 py-1.5 text-xs ${LAB_BTN_OUTLINE}`}
-                                    onClick={() => embed(newsMod.installation, '/')}
+                                    onClick={() => embed(newsMod.installation, recommendedRoute('news'))}
                                 >
-                                    + ฝังฟีดข่าวสารในหน้าหลัก
+                                    + ฝังฟีดข่าวสารใน {recommendedRoute('news')}
                                 </button>
                             )}
                         </div>
+                        {renderModuleWriteGateBanner(newsMod)}
                         {newsReady ? (
                             <NewsDesk
                                 key={newsMod.installation.uuid}
@@ -494,12 +627,13 @@ export default function ModulesDesk({ projectUuid, vfsContents = {} }) {
                                     type="button"
                                     disabled={busy}
                                     className={`rounded-lg px-3 py-1.5 text-xs ${LAB_BTN_OUTLINE}`}
-                                    onClick={() => embed(contactMod.installation, '/')}
+                                    onClick={() => embed(contactMod.installation, recommendedRoute('contact'))}
                                 >
-                                    + ฝังฟอร์มติดต่อในหน้าหลัก
+                                    + ฝังฟอร์มติดต่อใน {recommendedRoute('contact')}
                                 </button>
                             )}
                         </div>
+                        {renderModuleWriteGateBanner(contactMod)}
                         {contactReady ? (
                             <ContactInbox
                                 key={contactMod.installation.uuid}
@@ -530,13 +664,28 @@ export default function ModulesDesk({ projectUuid, vfsContents = {} }) {
                             <h2 className="text-base font-semibold text-krikkit-fg">ภาพรวมโมดูลและการเชื่อมต่อฐานข้อมูล</h2>
                             <p className="text-xs text-krikkit-muted">เปิด/ปิดสิทธิ์โมดูล ตรวจสอบความปลอดภัยของ Schema และสิทธิ์ RPC ฝั่งฐานข้อมูล</p>
                         </div>
+                        {data && !writable ? (
+                            <aside className="rounded-xl border border-amber-300 bg-amber-50/90 p-3.5 text-xs text-amber-950" role="status">
+                                <strong className="font-semibold">สถานะการเปิดรับข้อมูลธุรกิจ: ปิดกั้นชั่วคราว (Readiness Gate)</strong>
+                                <p className="mt-0.5 text-amber-900">
+                                    คุณสามารถเลือกโมดูล เตรียมฐานข้อมูล และตรวจ/Apply Schema ได้ตามปกติ แต่ปุ่ม <span className="font-semibold">เปิดใช้งาน</span> จะเปิดให้กดเมื่อระบบยืนยัน <code className="rounded bg-amber-100 px-1 py-0.5 font-mono text-[11px]">business_writes_ready = true</code> แล้ว
+                                </p>
+                            </aside>
+                        ) : null}
                         {data?.modules.map((module) => (
                             <article key={module.key} className="rounded-xl border border-krikkit-line bg-krikkit-surface p-4">
                                 <div className="flex flex-wrap items-center justify-between gap-2">
                                     <h3 className="font-semibold text-krikkit-fg">{titles[module.key] || module.title}</h3>
-                                    <span className="rounded-full border border-krikkit-line px-2 py-0.5 text-xs">
-                                        {module.installation ? statusText[module.installation.status] || module.installation.status : 'ยังไม่ได้เตรียม'}
-                                    </span>
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                        {schemaReady(module) && (
+                                            <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${module.installation?.enabled ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+                                                {module.installation?.enabled ? 'เปิดรับข้อมูลแล้ว' : 'ปิดรับข้อมูลอยู่'}
+                                            </span>
+                                        )}
+                                        <span className="rounded-full border border-krikkit-line px-2 py-0.5 text-xs">
+                                            {module.installation ? statusText[module.installation.status] || module.installation.status : 'ยังไม่ได้เตรียม'}
+                                        </span>
+                                    </div>
                                 </div>
                                 {! module.entitled ? <p className="mt-2 text-xs text-krikkit-muted">แพ็กเกจยังไม่ได้เปิดสิทธิ์โมดูลนี้</p> : null}
                                 <label className="mt-3 flex items-center gap-2 text-xs">

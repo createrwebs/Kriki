@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/lab/builder', WebsiteBuilderController::class)->middleware('throttle:120,1,builder-read')->name('lab.builder');
 Route::get('/lab/builder/catalog', [WebsiteDraftController::class, 'catalog'])->middleware('throttle:120,1,builder-read')->name('lab.builder.catalog');
+Route::post('/lab/builder/ai-plan', [WebsiteBuilderAiController::class, 'plan'])->middleware('throttle:20,1,builder-write')->name('lab.builder.ai-plan');
 Route::post('/lab/builder/ai-edit', [WebsiteBuilderAiController::class, 'edit'])->middleware('throttle:30,1,builder-write')->name('lab.builder.ai-edit');
 Route::post('/lab/builder/upload-image', [WebsiteBuilderAiController::class, 'uploadImage'])->middleware('throttle:30,1,builder-write')->name('lab.builder.upload-image');
 Route::get('/lab/builder/projects', [WebsiteBuilderAiController::class, 'listProjects'])->middleware('throttle:120,1,builder-read')->name('lab.builder.projects.index');

@@ -1,0 +1,86 @@
+version: '3.8'
+
+services:
+  mysql-server:
+    image: mariadb:10.11
+    container_name: mysql-server
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: RootDbPass2026!
+      MYSQL_DATABASE: wordpress_db
+      MYSQL_USER: wp_user
+      MYSQL_PASSWORD: WpPass2026!
+    volumes:
+      - /opt/webstack/mysql:/var/lib/mysql
+      - /opt/webstack/mysql-init:/docker-entrypoint-initdb.d
+    ports:
+      - "127.0.0.1:3306:3306"
+    networks:
+      - webstack-net
+
+  whmcs:
+    build:
+      context: /opt/webstack/whmcs-docker
+      dockerfile: Dockerfile
+    container_name: whmcs-app
+    restart: always
+    volumes:
+      - /opt/webstack/whmcs:/var/www/whmcs
+    depends_on:
+      - mysql-server
+    networks:
+      - webstack-net
+
+  wordpress:
+    image: wordpress:php8.2-fpm
+    container_name: wordpress-app
+    restart: always
+    environment:
+      WORDPRESS_DB_HOST: mysql-server:3306
+      WORDPRESS_DB_NAME: wordpress_db
+      WORDPRESS_DB_USER: wp_user
+      WORDPRESS_DB_PASSWORD: WpPass2026!
+      WORDPRESS_TABLE_PREFIX: wp_
+    volumes:
+      - /opt/webstack/wordpress:/var/www/html
+    depends_on:
+      - mysql-server
+    networks:
+      - webstack-net
+
+  krikkit:
+    build:
+      context: /opt/webstack/krikkit-docker
+      dockerfile: Dockerfile
+    container_name: krikkit-app
+    restart: always
+    volumes:
+      - /opt/webstack/krikkit:/var/www/krikkit
+    ports:
+      - "0.0.0.0:8892:8892"
+    depends_on:
+      - mysql-server
+    networks:
+      - webstack-net
+
+  nginx:
+    image: nginx:alpine
+    container_name: webstack-nginx
+    restart: always
+    ports:
+      - "0.0.0.0:80:80"
+    volumes:
+      - /opt/webstack/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - /opt/webstack/wordpress:/var/www/html
+      - /opt/webstack/whmcs:/var/www/whmcs
+      - /opt/webstack/krikkit/public:/var/www/krikkit/public:ro
+    depends_on:
+      - whmcs
+      - wordpress
+      - krikkit
+    networks:
+      - webstack-net
+
+networks:
+  webstack-net:
+    driver: bridge

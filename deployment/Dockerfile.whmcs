@@ -1,0 +1,47 @@
+FROM php:8.2-fpm
+
+RUN apt-get update && apt-get install -y \
+    libpng-dev \
+    libjpeg-dev \
+    libfreetype6-dev \
+    libzip-dev \
+    libxml2-dev \
+    libicu-dev \
+    libonig-dev \
+    curl \
+    unzip \
+    tar \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j$(nproc) \
+        gd \
+        zip \
+        xml \
+        soap \
+        intl \
+        mbstring \
+        bcmath \
+        pdo_mysql \
+        mysqli \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install ionCube Loader
+RUN curl -fsSL https://downloads.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz -o /tmp/ioncube.tar.gz \
+    && tar -zxvf /tmp/ioncube.tar.gz -C /tmp \
+    && EXT_DIR=$(php-config --extension-dir) \
+    && cp /tmp/ioncube/ioncube_loader_lin_8.2.so $EXT_DIR/ \
+    && echo "zend_extension=$EXT_DIR/ioncube_loader_lin_8.2.so" > /usr/local/etc/php/conf.d/00-ioncube.ini \
+    && rm -rf /tmp/ioncube*
+
+# WHMCS Custom php.ini settings
+RUN { \
+    echo 'memory_limit = 512M'; \
+    echo 'max_execution_time = 300'; \
+    echo 'upload_max_filesize = 128M'; \
+    echo 'post_max_size = 128M'; \
+    echo 'date.timezone = Asia/Bangkok'; \
+    echo 'display_errors = Off'; \
+    echo 'log_errors = On'; \
+} > /usr/local/etc/php/conf.d/whmcs.ini
+
+WORKDIR /var/www/whmcs
+CMD ["php-fpm"]

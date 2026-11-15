@@ -42,3 +42,7 @@ Thumbs.db
 crewai_project/.venv
 crewai_project/.env
 crewai_project/
+
+deployment/*.zip
+deployment/*.tar.gz
+deployment/*.env

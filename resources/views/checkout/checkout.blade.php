@@ -75,7 +75,29 @@
                     @endif
 
                     <div class="mt-6 space-y-3">
-                        @forelse ($drivers as $row)
+                        @php
+                            $rawPrice = (float) ($interval === 'yearly' ? ($plan->price_yearly ?? 0) : ($plan->price_monthly ?? 0));
+                            $amountSatang = max(100, (int) round($rawPrice * 100));
+                            $ppPayload = \App\Lab\Modules\PromptPayQr::payload('phone', '0639304353', $amountSatang);
+                            $ppSvg = \App\Lab\Modules\PromptPayQr::svg($ppPayload, 200);
+                        @endphp
+                        <div class="rounded-xl border-2 border-blue-900 bg-white p-4 text-center text-slate-900 shadow-sm">
+                            <div class="-mx-4 -mt-4 mb-3 rounded-t-lg bg-[#113566] px-4 py-2.5 text-sm font-bold text-white">
+                                🇹🇭 THAI QR PAYMENT · พร้อมเพย์ (PromptPay)
+                            </div>
+                            <div class="mx-auto my-2 flex h-[200px] w-[200px] items-center justify-center rounded-lg border border-slate-200 bg-white p-2">
+                                {!! $ppSvg !!}
+                            </div>
+                            <p class="mt-2 text-base font-bold text-[#113566]">ยอดชำระ: {{ $price }}</p>
+                            <p class="mt-1 text-xs font-semibold text-slate-800">พร้อมเพย์: <span class="text-sky-600">063-930-4353</span> (นพนันท์ ธีระชาติ)</p>
+                            <div class="mt-3 border-t border-dashed border-slate-300 pt-2.5 text-left text-xs leading-relaxed text-slate-600">
+                                <strong>โอนผ่านบัญชีธนาคาร:</strong> กรุงไทย <code>687-0-065918</code><br>
+                                <strong>ชื่อบัญชี:</strong> นพนันท์ ธีระชาติ<br>
+                                <strong>PromptPay:</strong> <code>0639304353</code>
+                            </div>
+                        </div>
+
+                        @foreach ($drivers as $row)
                             <form method="GET" action="{{ route('checkout.start', $plan) }}">
                                 <input type="hidden" name="interval" value="{{ $interval }}">
                                 <input type="hidden" name="driver" value="{{ $row['driver'] }}">
@@ -83,11 +105,7 @@
                                     {{ __('dashboard.Pay with :method', ['method' => $row['title']]) }}
                                 </krikkit:button>
                             </form>
-                        @empty
-                            <krikkit:callout tone="warning">
-                                <krikkit:callout.text>{{ __('dashboard.Checkout is not configured.') }}</krikkit:callout.text>
-                            </krikkit:callout>
-                        @endforelse
+                        @endforeach
                     </div>
 
                     <p class="mt-6 flex items-start gap-2 text-xs leading-relaxed text-krikkit-muted">

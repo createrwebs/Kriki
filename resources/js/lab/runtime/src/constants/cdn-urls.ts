@@ -6,15 +6,15 @@ export const LAB_PINNED_BROTLI_WASM = "3.0.1";
 export const LAB_PINNED_LIGHTNINGCSS_WASM = "1.31.1";
 export const LAB_PINNED_WA_SQLITE = "1.0.0";
 
-export const CDN_ESBUILD_ESM = `https://esm.sh/esbuild-wasm@${LAB_PINNED_ESBUILD_WASM}`;
-export const CDN_ESBUILD_BINARY = `https://esm.sh/esbuild-wasm@${LAB_PINNED_ESBUILD_WASM}/esbuild.wasm`;
-export const CDN_ROLLUP_BROWSER = `https://esm.sh/@rollup/browser@${LAB_PINNED_ROLLUP_BROWSER}`;
+export const CDN_ESBUILD_ESM = `https://cdn.jsdelivr.net/npm/esbuild-wasm@${LAB_PINNED_ESBUILD_WASM}/+esm`;
+export const CDN_ESBUILD_BINARY = `https://cdn.jsdelivr.net/npm/esbuild-wasm@${LAB_PINNED_ESBUILD_WASM}/esbuild.wasm`;
+export const CDN_ROLLUP_BROWSER = `https://cdn.jsdelivr.net/npm/@rollup/browser@${LAB_PINNED_ROLLUP_BROWSER}/+esm`;
 // jsdelivr serves raw files without rebundling. esm.sh rebundles everything
 // which breaks brotli-wasm's circular WASM/JS-glue dependencies, causing
 // `(void 0) is not a function` at runtime. The pkg.web variant has a proper
 // init() that fetches the co-located .wasm binary via import.meta.url.
 export const CDN_BROTLI_WASM = `https://cdn.jsdelivr.net/npm/brotli-wasm@${LAB_PINNED_BROTLI_WASM}/pkg.web/brotli_wasm.js`;
-export const CDN_LIGHTNINGCSS_WASM = `https://esm.sh/lightningcss-wasm@${LAB_PINNED_LIGHTNINGCSS_WASM}`;
+export const CDN_LIGHTNINGCSS_WASM = `https://cdn.jsdelivr.net/npm/lightningcss-wasm@${LAB_PINNED_LIGHTNINGCSS_WASM}/+esm`;
 export const CDN_WA_SQLITE = `https://cdn.jsdelivr.net/npm/wa-sqlite@${LAB_PINNED_WA_SQLITE}/dist/wa-sqlite.mjs`;
 export const CDN_WA_SQLITE_WASM = `https://cdn.jsdelivr.net/npm/wa-sqlite@${LAB_PINNED_WA_SQLITE}/dist/wa-sqlite.wasm`;
 

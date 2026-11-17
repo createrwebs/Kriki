@@ -15,7 +15,7 @@ final class ProviderHttp
     /**
      * @param  array<string, mixed>  $config  Provider config slice
      */
-    public static function make(array $config = []): PendingRequest
+    public static function make(array $config = [], bool $forStream = false): PendingRequest
     {
         $timeout = (int) ($config['timeout'] ?? config('ai.http.timeout', 120));
         $connect = (int) config('ai.http.connect_timeout', 15);
@@ -25,32 +25,12 @@ final class ProviderHttp
             ->timeout(max(1, $timeout))
             ->connectTimeout(max(1, $connect));
 
-        $curl = [];
-
         if (config('ai.http.disable_proxy', true)) {
-            // Guzzle/cURL require a string for CURLOPT_PROXY — `false` throws
-            // "CURLOPT_PROXY must be a string" (Lab → Chat request failed).
             $request = $request->withOptions(['proxy' => '']);
-            if (defined('CURLOPT_PROXY')) {
-                $curl[CURLOPT_PROXY] = '';
-            }
-            if (defined('CURLOPT_NOPROXY')) {
-                $curl[CURLOPT_NOPROXY] = '*';
-            }
         }
 
-        if (config('ai.http.force_ipv4', true) && defined('CURLOPT_IPRESOLVE') && defined('CURL_IPRESOLVE_V4')) {
-            $curl[CURLOPT_IPRESOLVE] = CURL_IPRESOLVE_V4;
-        }
-
-        // Small receive buffer so streamed provider frames aren't held in
-        // cURL until a large chunk fills (same class of delay as PHP fread).
-        if (defined('CURLOPT_BUFFERSIZE')) {
-            $curl[CURLOPT_BUFFERSIZE] = 128;
-        }
-
-        if ($curl !== []) {
-            $request = $request->withOptions(['curl' => $curl]);
+        if (config('ai.http.force_ipv4', true)) {
+            $request = $request->withOptions(['force_ip_resolve' => 'v4']);
         }
 
         if (ini_get('curl.cainfo') === '' && ini_get('openssl.cafile') === '') {
@@ -70,7 +50,7 @@ final class ProviderHttp
      */
     public static function streaming(array $config = []): PendingRequest
     {
-        return self::make($config)
+        return self::make($config, true)
             ->accept('text/event-stream')
             // Compressed SSE buffers whole deflate blocks before any frame can
             // be decoded — force identity so tokens stream byte-by-byte.

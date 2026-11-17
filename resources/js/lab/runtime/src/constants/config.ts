@@ -37,7 +37,7 @@ export const NPM_REGISTRY_URL_SLASH = "https://registry.npmjs.org/";
 // ---------------------------------------------------------------------------
 
 export const PINNED_PAKO = "2.1.0";
-export const CDN_PAKO = `https://esm.sh/pako@${PINNED_PAKO}`;
+export const CDN_PAKO = `https://cdn.jsdelivr.net/npm/pako@${PINNED_PAKO}/+esm`;
 
 // ---------------------------------------------------------------------------
 // Module resolution file extensions

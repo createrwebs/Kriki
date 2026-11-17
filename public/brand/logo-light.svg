@@ -1,6 +1,18 @@
-<svg width="1194" height="1320" viewBox="0 0 1194 1320" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M0 249C0 201.503 38.5035 163 86 163H363C410.496 163 449 201.504 449 249V744H0V249Z" fill="#0D0D0D"/>
-<path d="M535 1320H942.511C1024.49 1320 1059.98 1216.2 995.171 1166.01L449 743V1234C449 1281.5 487.504 1320 535 1320Z" fill="#0D0D0D"/>
-<path d="M1030 657L1030 249.591C1030 167.818 926.625 132.199 876.253 196.616L449 743L944 743C991.496 743 1030 704.496 1030 657Z" fill="#0D0D0D"/>
-<path d="M449 743H0V1320C206 1320 273.655 968.333 449 743Z" fill="#0D0D0D"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 64" width="280" height="64">
+  <defs>
+    <linearGradient id="caiGradL" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#06b6d4"/>
+      <stop offset="50%" stop-color="#673de6"/>
+      <stop offset="100%" stop-color="#ee5586"/>
+    </linearGradient>
+    <linearGradient id="caiAiGradL" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ee5586"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="8" width="48" height="48" rx="14" fill="url(#caiGradL)"/>
+  <path d="M28 17L31.2 26.8L41 30L31.2 33.2L28 43L24.8 33.2L15 30L24.8 26.8L28 17Z" fill="#ffffff"/>
+  <circle cx="38" cy="20" r="2.5" fill="#fde047"/>
+  <text x="64" y="40" fill="#1e293b" font-family="'Inter', 'Prompt', 'Segoe UI', Arial, sans-serif" font-size="30" font-weight="800" letter-spacing="-0.8">Create<tspan fill="url(#caiAiGradL)">AI</tspan></text>
+  <text x="65" y="54" fill="#64748b" font-family="'Inter', 'Prompt', Arial, sans-serif" font-size="8.5" font-weight="600" letter-spacing="1.4">AI PROMPT &amp; CLOUD HOSTING</text>
 </svg>

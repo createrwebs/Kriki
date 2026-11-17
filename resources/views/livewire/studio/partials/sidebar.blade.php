@@ -94,6 +94,24 @@
                     <span class="truncate">{{ __('messages.Lab') }}</span>
                 </a>
             </li>
+            <li class="pt-2 mt-2 border-t border-krikkit-line/50">
+                <a
+                    href="/billing/clientarea.php?action=domains"
+                    class="flex items-center gap-3 rounded-md px-2.5 py-2.5 text-sm text-krikkit-muted transition hover:text-krikkit-fg"
+                >
+                    <krikkit:icon name="globe" class="size-[18px]" />
+                    <span class="truncate">จัดการโดเมน (Domains)</span>
+                </a>
+            </li>
+            <li>
+                <a
+                    href="/billing/clientarea.php?action=services"
+                    class="flex items-center gap-3 rounded-md px-2.5 py-2.5 text-sm text-krikkit-muted transition hover:text-krikkit-fg"
+                >
+                    <krikkit:icon name="server" class="size-[18px]" />
+                    <span class="truncate">จัดการโฮสติ้ง & VPS</span>
+                </a>
+            </li>
         </ul>
     </nav>
 

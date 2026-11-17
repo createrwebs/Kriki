@@ -57,7 +57,7 @@ final class EnvironmentStep implements InstallerStep
 
         $env = app(EnvironmentWriter::class);
         $fill = [
-            'APP_NAME' => (string) (config('installer.name') ?: 'Krikkit'),
+            'APP_NAME' => (string) (config('installer.name') ?: 'CreateAI'),
             'APP_ENV' => 'production',
             'APP_DEBUG' => 'false',
             'SESSION_DRIVER' => 'file',

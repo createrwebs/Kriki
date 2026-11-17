@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>ยังไม่เปิดให้รันโปรเจกต์นี้ · Krikkit</title>
+    <title>ยังไม่เปิดให้รันโปรเจกต์นี้ · CreateAI</title>
     <style>
         body { margin: 0; background: #fafaf9; color: #292524; font: 16px/1.7 system-ui, sans-serif; }
         main { max-width: 40rem; margin: 8vh auto; padding: 2rem; }
@@ -15,7 +15,7 @@
 </head>
 <body>
 <main id="runtime-unavailable">
-    <p>Krikkit · Source only</p>
+    <p>CreateAI · Source only</p>
     <h1>ยังไม่เปิดให้รันโปรเจกต์ชนิดนี้</h1>
     <p>{{ $project->title }}</p>
     <p>{{ $runtime['reason'] }}</p>

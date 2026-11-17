@@ -176,12 +176,7 @@ export function PreviewApp() {
     return (
         <div className="flex h-dvh flex-col bg-krikkit-canvas">
             <header className="flex h-12 shrink-0 items-center gap-2 border-b border-krikkit-line px-4">
-                <a
-                    href={workspaceUrl}
-                    className="inline-flex h-5 items-center truncate text-sm font-semibold leading-none tracking-tight text-krikkit-fg hover:text-accent-content"
-                >
-                    Krikkit
-                </a>
+                <a href={workspaceUrl} className="inline-flex shrink-0 items-center"><img src="/brand/createai-logo.jpg" alt="CreateAI" width="199" height="66" className="h-7 w-auto rounded-sm bg-white object-contain" /></a>
                 <span className="text-krikkit-subtle" aria-hidden>/</span>
                 <a href={workspaceUrl} className="inline-flex h-5 items-center gap-1.5 text-sm font-medium leading-none text-krikkit-fg hover:text-accent-content">
                     <LabGlyph />

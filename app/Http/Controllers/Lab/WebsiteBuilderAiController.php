@@ -384,7 +384,7 @@ final class WebsiteBuilderAiController extends Controller
         $entitlements->assertQuota($actor, EntitlementCatalog::LAB_CREDITS);
 
         $system = <<<'SYS'
-You are an expert Thai & English Website Blueprint Architect for Krikkit Builder.
+You are an expert Thai & English Website Blueprint Architect for CreateAI Builder.
 Your job is to modify the provided website `blueprint` JSON according to the user's instruction (`prompt`) and return ONLY the updated `blueprint` JSON object (no markdown fences, no commentary).
 
 STRICT SCHEMA RULES:

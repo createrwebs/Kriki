@@ -163,6 +163,13 @@ export function LabHeader({
                             </button>
                         )
                     ) : null}
+                    <a
+                        href="/billing/clientarea.php"
+                        className="hidden sm:inline-flex h-7 items-center gap-1 rounded-md border border-krikkit-line bg-krikkit-surface px-2.5 text-xs font-medium text-krikkit-fg transition hover:border-krikkit-accent hover:text-krikkit-accent"
+                        title="ระบบจัดการโดเมนและเว็บโฮสติ้ง"
+                    >
+                        🌐 โดเมน & โฮสติ้ง
+                    </a>
                     <CreditBalanceBadge inProject={Boolean(projectUuid)} />
                     <ManualWorkspaceButton
                         visible={! building}

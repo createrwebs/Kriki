@@ -173,7 +173,7 @@ final class CheckoutDesk
                     ],
                 ]],
                 'application_context' => [
-                    'brand_name' => config('app.name', 'Krikkit'),
+                    'brand_name' => config('app.name', 'CreateAI'),
                     'user_action' => 'PAY_NOW',
                     'return_url' => route('billing.paypal.return'),
                     'cancel_url' => route('billing.cancel'),

@@ -63,7 +63,7 @@ export function getSandboxPageHtml(config: SandboxPageConfig | string): string {
 
   return `<!DOCTYPE html>
 <html>
-<head><meta charset="UTF-8"><title>Krikkit Lab Sandbox</title></head>
+<head><meta charset="UTF-8"><title>CreateAI Lab Sandbox</title></head>
 <body>
 <script type="module">
   import { MemoryVolume, ScriptEngine } from '${runtimeUrl}';
@@ -151,7 +151,7 @@ export function generateSandboxDeployment(config: SandboxPageConfig | string): G
 }
 
 export const SANDBOX_DEPLOYMENT_GUIDE = `
-# Deploying a Krikkit Lab Sandbox
+# Deploying a CreateAI Lab Sandbox
 
 ## 1. Generate sandbox files
    Use generateSandboxDeployment() to create the required files.

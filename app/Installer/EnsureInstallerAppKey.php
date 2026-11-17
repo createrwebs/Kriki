@@ -42,7 +42,7 @@ final class EnsureInstallerAppKey
 
         if (! is_file($path)) {
             $written = @file_put_contents($path, implode("\n", [
-                'APP_NAME=Krikkit',
+                'APP_NAME=CreateAI',
                 'APP_ENV=production',
                 'APP_KEY=',
                 'APP_DEBUG=false',

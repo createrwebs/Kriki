@@ -558,7 +558,7 @@ export function draftAppFromBrief(source = '', brief = '') {
     <main className="min-h-dvh bg-zinc-50 text-zinc-900">
       <div className="mx-auto flex min-h-dvh max-w-3xl flex-col justify-center px-6 py-16">
         <p className="text-xs font-medium tracking-[0.2em] text-teal-600 uppercase">
-          Krikkit Lab
+          CreateAI Lab
         </p>
         <h1 className="mt-3 text-4xl font-semibold tracking-tight">
           ${title}

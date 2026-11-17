@@ -32,7 +32,7 @@ final class LocalProvider implements HostingProvider
 
     public function displayName(): string
     {
-        return 'Krikkit static hosting';
+        return 'CreateAI static hosting';
     }
 
     public function deploy(LabProject $project, string $artifactPath, array $options = []): array

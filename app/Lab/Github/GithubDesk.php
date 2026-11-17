@@ -222,7 +222,7 @@ final class GithubDesk
         $pushed = null;
         if ($push) {
             try {
-                $pushed = $this->push($user, $project, 'Initial commit from Krikkit Lab');
+                $pushed = $this->push($user, $project, 'Initial commit from CreateAI Lab');
             } catch (RuntimeException $e) {
                 $pushed = ['ok' => false, 'message' => $e->getMessage()];
             }
@@ -328,7 +328,7 @@ final class GithubDesk
         }
 
         $treeSha = $this->api->createTree($token, $remote->owner, $remote->repo, $tree, $baseTree);
-        $commitMessage = trim($message) !== '' ? trim($message) : 'Update from Krikkit Lab';
+        $commitMessage = trim($message) !== '' ? trim($message) : 'Update from CreateAI Lab';
         $commitSha = $this->api->createCommit(
             $token,
             $remote->owner,

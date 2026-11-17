@@ -112,6 +112,15 @@
                     <span class="truncate">จัดการโฮสติ้ง & VPS</span>
                 </a>
             </li>
+            <li>
+                <a
+                    href="/billing/cart.php?a=add&pid=8"
+                    class="flex items-center gap-3 rounded-md px-2.5 py-2.5 text-sm font-medium text-pink-400 transition hover:text-pink-300"
+                >
+                    <span class="inline-flex size-[18px] items-center justify-center text-sm leading-none">🦞</span>
+                    <span class="truncate">สร้าง OpenClaw AI Agent</span>
+                </a>
+            </li>
         </ul>
     </nav>
 
